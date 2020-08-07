@@ -5,6 +5,8 @@ import seaborn as sns
 import torch
 import torch.nn as nn
 
+from utils import *
+
 class Encoder(nn.Module):
   def __init__(self, in_size, latent_size):
     super().__init__()
