@@ -14,9 +14,7 @@ If you use this software, please cite the following paper as appropriate:
     USAD : UnSupervised Anomaly Detection on multivariate time series.
     Physics in Medicine & Biology, 59(9), 2155.??????????????????????
 
-# Building the software
-
-## Requirements
+# Requirements
  * PyTorch 1.6.0
  * CUDA 10.1 (to allow use of GPU, not compulsory)
 
