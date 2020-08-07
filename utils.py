@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
 
+from sklearn.metrics import roc_curve,roc_auc_score
+
 def get_default_device():
     """Pick GPU if available, else CPU"""
     if torch.cuda.is_available():
