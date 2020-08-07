@@ -17,12 +17,8 @@ If you use this software, please cite the following paper as appropriate:
 # Building the software
 
 ## Requirements
- * CMake (3 or higher)
- * ITK 4.8 (not tested with later versions)
- * Python (to allow use of pip to install imagesplit)
- * ImageSplit (`pip install imagesplit`)
- * Fiji
- * You must then build the C++ components as described below
+ * PyTorch 1.6.0
+ * CUDA 10.1 (to allow use of GPU, not compulsory)
 
 # Running the Software
 
