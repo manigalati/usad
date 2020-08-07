@@ -29,6 +29,16 @@ def plot_history(history):
     plt.grid()
     plt.show()
     
+def histogram(y_test,y_pred):
+    plt.figure(figsize=(12,6))
+    plt.hist([y_pred[y_test==0],
+              y_pred[y_test==1]],
+            bins=20,
+            color = ['#82E0AA','#EC7063'],stacked=True)
+    plt.title("Results",size=20)
+    plt.grid()
+    plt.show()
+    
 def ROC(y_test,y_pred):
     fpr,tpr,tr=roc_curve(y_test,y_pred)
     auc=roc_auc_score(y_test,y_pred)
