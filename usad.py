@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from utils import *
+device = get_default_device()
 
 class Encoder(nn.Module):
   def __init__(self, in_size, latent_size):
