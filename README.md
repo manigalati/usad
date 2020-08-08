@@ -1,10 +1,10 @@
 # USAD
 
-Scripts and utility programs for implementing the USAD architecture
+Scripts and utility programs for implementing the USAD architecture.
 
-Implementation by: Francesco Galati
+Implementation by: Francesco Galati.
 
-Additional contributions: Julien Audibert, Maria A. Zuluaga
+Additional contributions: Julien Audibert, Maria A. Zuluaga.
 
 ## How to cite
 
