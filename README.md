@@ -29,8 +29,9 @@ Copyright 2020 Eurecom.
 
 This software is released under the BSD-3 license. Please see the license file_ for details.
 
-[SWaT dataset]: https://itrust.sutd.edu.sg/itrust-labs_datasets/dataset_info/#swat
-
 ## Pre-Print
 
-[USAD : UnSupervised Anomaly Detection on multivariate time series.]: http://www.eurecom.fr/en/publication/6271/download/data-publi-6271_1.pdf
+Audibert et al. [USAD : UnSupervised Anomaly Detection on multivariate time series]. 2020
+
+[SWaT dataset]: https://itrust.sutd.edu.sg/itrust-labs_datasets/dataset_info/#swat
+[USAD : UnSupervised Anomaly Detection on multivariate time series]: http://www.eurecom.fr/en/publication/6271/download/data-publi-6271_1.pdf
