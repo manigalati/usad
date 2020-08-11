@@ -21,7 +21,7 @@ If you use this software, please cite the following paper as appropriate:
 ## Running the Software
 
 All the python classes and functions strictly needed to implement the USAD architecture can be found in `usad.py`.
-An example of a realistic application deployed with the [SWaT dataset] is included in `USAD.ipynb`.
+An example of an application deployed with the [SWaT dataset] is included in `USAD.ipynb`.
 
 ## Copyright and licensing
 
