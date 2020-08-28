@@ -12,7 +12,7 @@ If you use this software, please cite the following paper as appropriate:
 
     Audibert, J., Michiardi, P., Guyard, F., Marti, S., Zuluaga, M. A. (2020).
     USAD : UnSupervised Anomaly Detection on multivariate time series.
-    26th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, August 23-27, 2020, San Diego, USA
+    Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining, August 23-27, 2020
 
 ## Requirements
  * PyTorch 1.6.0
@@ -29,9 +29,9 @@ Copyright 2020 Eurecom.
 
 This software is released under the BSD-3 license. Please see the license file_ for details.
 
-## Pre-Print
+## Publication
 
 Audibert et al. [USAD : UnSupervised Anomaly Detection on multivariate time series]. 2020
 
 [SWaT dataset]: https://itrust.sutd.edu.sg/itrust-labs_datasets/dataset_info/#swat
-[USAD : UnSupervised Anomaly Detection on multivariate time series]: http://www.eurecom.fr/en/publication/6271/download/data-publi-6271_1.pdf
+[USAD : UnSupervised Anomaly Detection on multivariate time series]: https://dl.acm.org/doi/pdf/10.1145/3394486.3403392
