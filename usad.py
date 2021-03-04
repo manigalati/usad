@@ -85,13 +85,21 @@ def training(epochs, model, train_loader, val_loader, opt_func=torch.optim.Adam)
     for epoch in range(epochs):
         for [batch] in train_loader:
             batch=to_device(batch,device)
+            
+            #Train AE1
             loss1,loss2 = model.training_step(batch,epoch+1)
-            loss1.backward(retain_graph=True)
-            loss2.backward()
+            loss1.backward()
             optimizer1.step()
-            optimizer2.step()
             optimizer1.zero_grad()
+            
+            
+            #Train AE2
+            loss1,loss2 = model.training_step(batch,epoch+1)
+            loss2.backward()
+            optimizer2.step()
             optimizer2.zero_grad()
+            
+            
         result = evaluate(model, val_loader, epoch+1)
         model.epoch_end(epoch, result)
         history.append(result)
