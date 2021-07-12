@@ -29,7 +29,7 @@ def plot_history(history):
     plt.legend()
     plt.title('Losses vs. No. of epochs')
     plt.grid()
-    plt.show()
+    plt.savefig("history")
     
 def histogram(y_test,y_pred):
     plt.figure(figsize=(12,6))
@@ -39,12 +39,17 @@ def histogram(y_test,y_pred):
             color = ['#82E0AA','#EC7063'],stacked=True)
     plt.title("Results",size=20)
     plt.grid()
-    plt.show()
+    plt.savefig("histogram")
     
 def ROC(y_test,y_pred):
     fpr,tpr,tr=roc_curve(y_test,y_pred)
     auc=roc_auc_score(y_test,y_pred)
     idx=np.argwhere(np.diff(np.sign(tpr-(1-fpr)))).flatten()
+    print("fpr",fpr)
+    print("tpr",tpr)
+    print("tr",tr)
+    print("auc",auc)
+    print("idx",idx)
 
     plt.xlabel("FPR")
     plt.ylabel("TPR")
@@ -53,7 +58,7 @@ def ROC(y_test,y_pred):
     plt.plot(fpr[idx],tpr[idx], 'ro')
     plt.legend(loc=4)
     plt.grid()
-    plt.show()
+    plt.savefig("ROC")
     return tr[idx]
     
 def confusion_matrix(target, predicted, perc=False):
@@ -68,4 +73,4 @@ def confusion_matrix(target, predicted, perc=False):
         sns.heatmap(confusion_matrix/np.sum(confusion_matrix), annot=True, fmt='.2%', cmap='Blues')
     else:
         sns.heatmap(confusion_matrix, annot=True, fmt='d')
-    plt.show()
+    plt.savefig("confusion_matrix")
