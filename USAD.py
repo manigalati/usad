@@ -7,9 +7,9 @@
 ## parameter
 
 
-batch_size =  7919
+batch_size =  919
 #BATCH_SIZE = 100 
-n_epochs= 50
+n_epochs= 60
 hidden_size = 40
 window_size=12
 normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
@@ -46,17 +46,28 @@ class train:
 
         
         train_loader,val_loader,test_loader,windows_normal,labels= handleData(normal_data_path,attack_data_path,window_size,hidden_size,batch_size)
+
+        input_feature_size = windows_normal.shape[2]
+        windows_size = windows_normal.shape[1]
         w_size=windows_normal.shape[1]*windows_normal.shape[2]
         z_size=windows_normal.shape[1]*hidden_size
+
 
         if modelName == "USAD":
             model = UsadModel(w_size, z_size)
         elif modelName == "autoencoder":
-            model = AutoencoderModel(w_size, z_size)
+            model = AutoencoderModel(w_size, z_size,input_feature_size)
+        elif modelName == "LSTM_USAD":
+            model = LSTM_UsadModel(w_size, z_size,input_feature_size,windows_size)
+        elif modelName == "LSTM_VAE":
+            model = LSTM_VAE(45,hidden_size,input_feature_size,windows_size)
+        else:
+            print("model name not found")
+
         model = to_device(model,device)
         history = model.training_all(n_epochs,model,train_loader,val_loader)
-
-        #plot_history(history)
+        print("model",model)
+        plot_history(history)
 
         model.saveModel()
 
@@ -67,6 +78,9 @@ class test:
         pass
     def run(self,modelName="USAD"):
         _,_,test_loader,windows_normal,labels= handleData(normal_data_path,attack_data_path,window_size,hidden_size,batch_size)
+        
+        input_feature_size = windows_normal.shape[2]
+        windows_size = windows_normal.shape[1]
         w_size=windows_normal.shape[1]*windows_normal.shape[2]
         z_size=windows_normal.shape[1]*hidden_size
 
@@ -74,7 +88,14 @@ class test:
         if modelName == "USAD":
             model = UsadModel(w_size, z_size)
         elif modelName == "autoencoder":
-            model = AutoencoderModel(w_size, z_size)
+            model = AutoencoderModel(w_size, z_size,input_feature_size,)
+        elif modelName == "LSTM_USAD":
+            model = LSTM_UsadModel(w_size, z_size,input_feature_size,windows_size)
+        elif modelName == "LSTM_VAE":
+            model = LSTM_VAE(45,hidden_size,input_feature_size,windows_size)
+        else:
+            print("model name not found")
+            
         model = to_device(model,device)
         model.loadModel()
 
@@ -110,7 +131,7 @@ if __name__ == "__main__":
     trainObj = train()
     testObj = test()
     if len(sys.argv) <3:
-        print("usage : ipython USAD.py {train|test} {USAD|autoencoder}")
+        print("usage : ipython USAD.py {train|test} {USAD|autoencoder|LSTM_USAD}")
     else:
         if sys.argv[1] == "test":
             testObj.run(sys.argv[2])

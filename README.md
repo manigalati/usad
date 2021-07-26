@@ -39,7 +39,7 @@ Audibert et al. [USAD : UnSupervised Anomaly Detection on multivariate time seri
 
 
 ## usage
->> I don't know why but it can only run on 國網
+>>  it can only run on 國網(gpu mem 大小的問題)
 
 * ipython USAD.py
 * result is ROC.png and history.png

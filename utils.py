@@ -24,9 +24,9 @@ def to_device(data, device):
     
 def plot_history(history):
     losses1 = [x['val_loss1'] for x in history]
-    losses2 = [x['val_loss2'] for x in history]
+    # losses2 = [x['val_loss2'] for x in history]
     plt.plot(losses1, '-x', label="loss1")
-    plt.plot(losses2, '-x', label="loss2")
+    # plt.plot(losses2, '-x', label="loss2")
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
