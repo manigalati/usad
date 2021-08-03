@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # USAD
-
-# ## Environment
 ## parameter
 
 
@@ -27,7 +24,7 @@ import torch
 import torch.nn as nn
 
 from utils import *
-from usad import *
+from model import *
 import torch.utils.data as data_utils
 
 
@@ -42,14 +39,18 @@ class train:
         pass
     
     
+
     def run(self,modelName="USAD"):
 
         
+        # train_loader 每次iter 取出來的東西是一個windows 攤平成一維的數據
         train_loader,val_loader,test_loader,windows_normal,labels= handleData(normal_data_path,attack_data_path,window_size,hidden_size,batch_size)
 
         input_feature_size = windows_normal.shape[2]
         windows_size = windows_normal.shape[1]
+        # w_size = 一整個window 的input 變成一維
         w_size=windows_normal.shape[1]*windows_normal.shape[2]
+        # w_size = 一整個window 的latent 變成一維
         z_size=windows_normal.shape[1]*hidden_size
 
 
@@ -60,12 +61,15 @@ class train:
         elif modelName == "LSTM_USAD":
             model = LSTM_UsadModel(w_size, z_size,input_feature_size,windows_size)
         elif modelName == "LSTM_VAE":
-            model = LSTM_VAE(45,hidden_size,input_feature_size,windows_size)
+            model = LSTM_VAE(input_feature_size-5,hidden_size,input_feature_size,windows_size)
+        elif modelName == "CNN_LSTM":
+            model = CNN_LSTM(hidden_size,input_feature_size,windows_size)
         else:
             print("model name not found")
+            exit()
 
         model = to_device(model,device)
-        history = model.training_all(n_epochs,model,train_loader,val_loader)
+        history = model.training_all(n_epochs,train_loader,val_loader)
         print("model",model)
         plot_history(history)
 
@@ -93,6 +97,8 @@ class test:
             model = LSTM_UsadModel(w_size, z_size,input_feature_size,windows_size)
         elif modelName == "LSTM_VAE":
             model = LSTM_VAE(45,hidden_size,input_feature_size,windows_size)
+        elif modelName == "CNN_LSTM":
+            model = CNN_LSTM(hidden_size,input_feature_size,windows_size)
         else:
             print("model name not found")
             
@@ -131,7 +137,7 @@ if __name__ == "__main__":
     trainObj = train()
     testObj = test()
     if len(sys.argv) <3:
-        print("usage : ipython USAD.py {train|test} {USAD|autoencoder|LSTM_USAD}")
+        print("usage : ipython main.py {train|test} {USAD|autoencoder|LSTM_USAD}")
     else:
         if sys.argv[1] == "test":
             testObj.run(sys.argv[2])

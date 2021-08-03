@@ -37,11 +37,22 @@ Audibert et al. [USAD : UnSupervised Anomaly Detection on multivariate time seri
 [USAD : UnSupervised Anomaly Detection on multivariate time series]: https://dl.acm.org/doi/pdf/10.1145/3394486.3403392
 
 
+## anomaly 判斷
+* 這邊就是windows裡面只要有一個是anomaly整段windows都標記成anomaly
 
 ## usage
->>  it can only run on 國網(gpu mem 大小的問題)
+>>  it can run on 國網(gpu mem 大小的問題)
+>>  you also can reduce batch size to prevent it from lack of mem
 
-* ipython USAD.py
+
+
+* help: ipython main.py
+
+## result
+* cmd : precision, recall ,f1score
 * result is ROC.png and history.png
 
 
+## modify
+if you want to add new model:
+1. 

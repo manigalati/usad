@@ -65,7 +65,7 @@ def printResult(y_test,y_pred,threshold):
 
     print('precision: {}'.format(precision[0]))
     print('recall: {}'.format(recall[0]))
-    print('fscore: {}'.format(fscore[0]))
+    print('f1score: {}'.format(fscore[0]))
     
 
 def confusion_matrix(target, predicted, perc=False):
