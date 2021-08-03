@@ -59,6 +59,7 @@ def ROC(y_test,y_pred):
     plt.savefig("ROC")
     return tr[idx]
 def printResult(y_test,y_pred,threshold):
+    print("============== result ==================")
     y_pred=[ 1 if(x>=threshold) else 0 for x in y_pred]
 
     precision, recall, fscore, support = score(y_test, y_pred)
@@ -66,6 +67,7 @@ def printResult(y_test,y_pred,threshold):
     print('precision: {}'.format(precision[0]))
     print('recall: {}'.format(recall[0]))
     print('f1score: {}'.format(fscore[0]))
+    print("============== result ==================")
     
 
 def confusion_matrix(target, predicted, perc=False):
@@ -85,10 +87,11 @@ def confusion_matrix(target, predicted, perc=False):
 
 
 def dataPreprocessing(dataset):
-    # Transform all columns into float64 
-    # because origin data have weird format float number
+    # 不知道為啥read 進來的float .會變成,
     for i in list(dataset): 
         dataset[i]=dataset[i].apply(lambda x: str(x).replace("," , "."))
+    # Transform all columns into float64 
+    
     dataset = dataset.astype(float)
 
     # #### Normalization
@@ -107,24 +110,25 @@ def seq2Window(dataset,window_size):
     windows_normal=dataset.values[np.arange(window_size)[None, :] + np.arange(dataset.shape[0]-window_size)[:, None]]
     return windows_normal
 
-def handleData(normal_data_path,attack_data_path,window_size,hidden_size,BATCH_SIZE):
-    # ### Normal period
-    #Read data
+def SWAT_loadData(normal_data_path,attack_data_path):
+    #### Normal 
     normal = pd.read_csv(normal_data_path)#, nrows=1000)
     normal = normal.drop(["Timestamp" , "Normal/Attack" ] , axis = 1)
     print("normal data.shape",normal.shape)
-    normal = dataPreprocessing(normal)
 
     #### Attack
 
-    attack= pd.read_csv(attack_data_path,sep=";")
+    # attack= pd.read_csv(attack_data_path,sep=";")
+    attack= pd.read_csv(attack_data_path)
     labels = [ float(label!= 'Normal' ) for label  in attack["Normal/Attack"].values]
     attack = attack.drop(["Timestamp" , "Normal/Attack" ] , axis = 1)
+    return normal,attack,labels
+    
+def handleData(normal_data_path,attack_data_path,window_size,hidden_size,BATCH_SIZE):
+    normal,attack,labels = SWAT_loadData(normal_data_path,attack_data_path)
+
+    normal=dataPreprocessing(normal)
     attack=dataPreprocessing(attack)
-
-
-    #### make window
-
 
     windows_normal=seq2Window(normal,window_size)
     print("windows_normal.shape",windows_normal.shape)
@@ -140,6 +144,7 @@ def handleData(normal_data_path,attack_data_path,window_size,hidden_size,BATCH_S
     print("w_size",w_size)
     print("z_size",z_size)
 
+    ## divide training dataset and validation dataset
     windows_normal_train = windows_normal[:int(np.floor(.8 *  windows_normal.shape[0]))]
     windows_normal_val = windows_normal[int(np.floor(.8 *  windows_normal.shape[0])):int(np.floor(windows_normal.shape[0]))]
 

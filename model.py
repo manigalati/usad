@@ -529,7 +529,6 @@ class LSTM_VAE(nn.Module):
   def training_all(self,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
       history = []
       optimizer1 = opt_func(list(self.encoder.parameters())+list(self.decoder.parameters()))
-      print("model.encoder.parameters",list(self.encoder.paramters))
       for epoch in range(epochs):
           for [batch] in train_loader:
               batch=to_device(batch,device)
@@ -616,8 +615,8 @@ class CNN_LSTM(nn.Module):
     c0 = torch.zeros(self.num_layers, latent.size(0), self.output_feature_dim).to(device)
     out, hidden = self.lstm(latent, (h0, c0))
 
-
     loss1 = torch.mean((batch-out)**2,axis=1) 
+    loss1 = torch.mean(loss1,axis=1) 
     return loss1
 
   ### need to modify this when building new model
@@ -631,69 +630,26 @@ class CNN_LSTM(nn.Module):
       checkpoint = torch.load("CNN_LSTM.pth")
       self.conv1.load_state_dict(checkpoint['conv1'])
       self.lstm.load_state_dict(checkpoint['lstm'])
-  ### In most case, you do not need to modify this when building new model
+  ### In most case, you do not need to modify below function when building new model
   def training_step(self, batch, n):
-
-    loss= self.caculateMSE(batch,n)
-    loss = torch.mean(loss)
-    return loss
+    return general_training_step(self,batch,n)
 
   def training_all(self,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
-      history = []
-      optimizer1 = opt_func(list(self.parameters()))
-      # print("model paramter",list(model.encoder.parameters())+list(model.decoder.parameters()))
-      for epoch in range(epochs):
-          for [batch] in train_loader:
-              batch=to_device(batch,device)
-              
-               #Train AE1
-              loss1= self.training_step(batch,epoch+1)
-              loss1.backward()
-              optimizer1.step()
-              optimizer1.zero_grad()
-              
-          result = evaluate(self, val_loader, epoch+1)
-          self.epoch_end(epoch, result)
-          history.append(result)
-      return history
+    return general_training_all(self,epochs,train_loader,val_loader,opt_func)
 
   def testing_all(self, test_loader, alpha=0.5,beta=0.5):
-    count=0
-    results=[]
-    for [batch] in test_loader:
-      # print("batch shape",batch.shape)
-      count+=1
-      print("iter ",count)
-      batch=to_device(batch,device)
-
-      with torch.no_grad():
-        # w1,_ = self.encoder(batch)
-        # w1=self.decoder(w1)
-        if count == 1:
-          loss = self.caculateMSE(batch,count,print_output=True)
-        else:
-          loss = self.caculateMSE(batch,count)
-        results.append(loss)
-
-
-      # del w1
-      torch.cuda.empty_cache()
-      gc.collect()
-    return results
+    return general_testing_all(self,test_loader,alpha,beta)
 
   def validation_step(self, batch, n):
-    loss1=self.training_step(batch,n)
-    return {'val_loss1': loss1}
+    return general_validation_step(self,batch,n)
         
   def validation_epoch_end(self, outputs):
-    batch_losses1 = [x['val_loss1'] for x in outputs]
-    epoch_loss1 = torch.stack(batch_losses1).mean()
-    return {'val_loss1': epoch_loss1.item()}
+    return general_validation_epoch_end(outputs)
     
   def epoch_end(self, epoch, result):
-    print("Epoch [{}], val_loss1: {:.4f}".format(epoch, result['val_loss1']))
+    general_epoch_end(epoch,result)
 
-#### normal model template
+################################################### normal model template
 def general_training_step(model, batch, n):
 
   loss= model.caculateMSE(batch,n)
@@ -754,7 +710,7 @@ def general_validation_epoch_end(outputs):
 def general_epoch_end(epoch, result):
   print("Epoch [{}], val_loss1: {:.4f}".format(epoch, result['val_loss1']))
 
-#####
+#############################################3
 def evaluate(model, val_loader, n):
     outputs = [model.validation_step(to_device(batch,device), n) for [batch] in val_loader]
     return model.validation_epoch_end(outputs)

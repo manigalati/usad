@@ -6,7 +6,7 @@
 
 batch_size =  919
 #BATCH_SIZE = 100 
-n_epochs= 60
+n_epochs= 50 
 hidden_size = 40
 window_size=12
 normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
@@ -30,17 +30,14 @@ import torch.utils.data as data_utils
 
 # In[4]:
 
-get_ipython().system('nvidia-smi -L')
+# get_ipython().system('nvidia-smi -L')
 device = get_default_device()
 
-
-class train:
+class execution:
     def __init__(self):
         pass
-    
-    
 
-    def run(self,modelName="USAD"):
+    def train(self,modelName):
 
         
         # train_loader 每次iter 取出來的東西是一個windows 攤平成一維的數據
@@ -75,12 +72,8 @@ class train:
 
         model.saveModel()
 
-        
     
-class test:
-    def __init__(self):
-        pass
-    def run(self,modelName="USAD"):
+    def test(self,modelName):
         _,_,test_loader,windows_normal,labels= handleData(normal_data_path,attack_data_path,window_size,hidden_size,batch_size)
         
         input_feature_size = windows_normal.shape[2]
@@ -96,7 +89,7 @@ class test:
         elif modelName == "LSTM_USAD":
             model = LSTM_UsadModel(w_size, z_size,input_feature_size,windows_size)
         elif modelName == "LSTM_VAE":
-            model = LSTM_VAE(45,hidden_size,input_feature_size,windows_size)
+            model = LSTM_VAE(input_feature_size-5,hidden_size,input_feature_size,windows_size)
         elif modelName == "CNN_LSTM":
             model = CNN_LSTM(hidden_size,input_feature_size,windows_size)
         else:
@@ -124,6 +117,7 @@ class test:
                                     results[-1].flatten().detach().cpu().numpy()])
 
 
+        # print("y_test len ,y_pre len",len(y_test),len(y_pred))
         threshold=ROC(y_test,y_pred)
         printResult(y_test,y_pred,threshold)
         print("threshold",threshold)
@@ -134,12 +128,11 @@ class test:
 
 if __name__ == "__main__":
     import sys
-    trainObj = train()
-    testObj = test()
+    executionObj = execution()
     if len(sys.argv) <3:
         print("usage : ipython main.py {train|test} {USAD|autoencoder|LSTM_USAD}")
     else:
         if sys.argv[1] == "test":
-            testObj.run(sys.argv[2])
+            executionObj.test(sys.argv[2])
         else:
-            trainObj.run(sys.argv[2])
+            executionObj.train(sys.argv[2])

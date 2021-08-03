@@ -49,10 +49,10 @@ Audibert et al. [USAD : UnSupervised Anomaly Detection on multivariate time seri
 * help: ipython main.py
 
 ## result
-* cmd : precision, recall ,f1score
 * result is ROC.png and history.png
 
 
 ## modify
 if you want to add new model:
-1. 
+1. add new model in model.py 
+2. add "if else condition" in main.py exection.test() and exection.train()
