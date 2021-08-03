@@ -44,9 +44,9 @@ Audibert et al. [USAD : UnSupervised Anomaly Detection on multivariate time seri
 >>  it can run on 國網(gpu mem 大小的問題)
 >>  you also can reduce batch size to prevent it from lack of mem
 
-
-
-* help: ipython main.py
+* put data in input/
+* modify paramters on the top of main.py
+* help: python main.py
 
 ## result
 * result is ROC.png and history.png

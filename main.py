@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-## parameter
-
+######################### parameter
 
 batch_size =  919
 #BATCH_SIZE = 100 
@@ -11,6 +10,7 @@ hidden_size = 40
 window_size=12
 normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
 attack_data_path="input/SWaT_Dataset_Attack_v0.csv"
+######################### 
 
 # In[3]:
 
