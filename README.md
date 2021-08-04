@@ -1,18 +1,3 @@
-# USAD - UnSupervised Anomaly Detection on multivariate time series
-
-Scripts and utility programs for implementing the USAD architecture.
-
-Implementation by: Francesco Galati.
-
-Additional contributions: Julien Audibert, Maria A. Zuluaga.
-
-## How to cite
-
-If you use this software, please cite the following paper as appropriate:
-
-    Audibert, J., Michiardi, P., Guyard, F., Marti, S., Zuluaga, M. A. (2020).
-    USAD : UnSupervised Anomaly Detection on multivariate time series.
-    Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining, August 23-27, 2020
 
 ## Requirements
  * PyTorch 1.6.0
@@ -23,11 +8,6 @@ If you use this software, please cite the following paper as appropriate:
 All the python classes and functions strictly needed to implement the USAD architecture can be found in `usad.py`.
 An example of an application deployed with the [SWaT dataset] is included in `USAD.ipynb`.
 
-## Copyright and licensing
-
-Copyright 2020 Eurecom.
-
-This software is released under the BSD-3 license. Please see the license file_ for details.
 
 ## Publication
 
@@ -56,3 +36,6 @@ Audibert et al. [USAD : UnSupervised Anomaly Detection on multivariate time seri
 if you want to add new model:
 1. add new model in model.py 
 2. add "if else condition" in main.py exection.test() and exection.train()
+
+## docker
+https://hub.docker.com/repository/docker/djjjimmyyy/anomaly_detection
