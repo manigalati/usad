@@ -5,11 +5,13 @@
 
 batch_size =  919
 #BATCH_SIZE = 100 
-n_epochs= 50 
+n_epochs=  50
 hidden_size = 40
 window_size=12
-normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
-attack_data_path="input/SWaT_Dataset_Attack_v0.csv"
+# normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
+# attack_data_path="input/SWaT_Dataset_Attack_v0.csv"
+normal_data_path="../dataset/WADI.A1_9 Oct 2017/WADI_normal_pre_2.csv"
+attack_data_path="../dataset/WADI.A1_9 Oct 2017/WADI_Attack_pre.csv"
 ######################### 
 
 # In[3]:

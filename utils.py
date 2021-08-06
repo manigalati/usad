@@ -86,6 +86,7 @@ def confusion_matrix(target, predicted, perc=False):
 
 
 
+    
 def dataPreprocessing(dataset):
     # 不知道為啥read 進來的float .會變成,
     for i in list(dataset): 
@@ -123,9 +124,35 @@ def SWAT_loadData(normal_data_path,attack_data_path):
     labels = [ float(label!= 'Normal' ) for label  in attack["Normal/Attack"].values]
     attack = attack.drop(["Timestamp" , "Normal/Attack" ] , axis = 1)
     return normal,attack,labels
+
+def WADI_loadData(normal_data_path,attack_data_path):
+    #### Normal 
+    normal = pd.read_csv(normal_data_path)#, nrows=1000)
+    print("normal.head(2)",normal.head(2))
+    normal = normal.drop(["Row","Date","Time" , "Normal/Attack" ] , axis = 1)
+    # normal= normal.dropna(axis=1)
+    normal= normal.fillna(0)
+    print("normal.head(2)",normal.head(2))
+    # drop column with at leat one NAN
+
+    #### Attack
+
+    # attack= pd.read_csv(attack_data_path,sep=";")
+    attack= pd.read_csv(attack_data_path)
+    print("attack.head(2)",attack.head(2))
+    labels = [ float(label!= 'Normal' ) for label  in attack["Normal/Attack"].values]
+    attack = attack.drop(["Row","Date","Time" , "Normal/Attack" ] , axis = 1)
+    attack=attack.fillna(0)
+    # attack= attack.dropna(axis=1)
+    print("attack.head(2)",attack.head(2))
+
+
+    
+    return normal,attack,labels
     
 def handleData(normal_data_path,attack_data_path,window_size,hidden_size,BATCH_SIZE):
-    normal,attack,labels = SWAT_loadData(normal_data_path,attack_data_path)
+    normal,attack,labels = WADI_loadData(normal_data_path,attack_data_path)
+    #normal,attack,labels = SWAT_loadData(normal_data_path,attack_data_path)
 
     normal=dataPreprocessing(normal)
     attack=dataPreprocessing(attack)
@@ -136,7 +163,6 @@ def handleData(normal_data_path,attack_data_path,window_size,hidden_size,BATCH_S
     windows_attack=seq2Window(attack,window_size)
     print("window_attack.shape",windows_attack.shape)
 
-    ### Training
 
     w_size=windows_normal.shape[1]*windows_normal.shape[2]
     z_size=windows_normal.shape[1]*hidden_size
@@ -148,6 +174,7 @@ def handleData(normal_data_path,attack_data_path,window_size,hidden_size,BATCH_S
     windows_normal_train = windows_normal[:int(np.floor(.8 *  windows_normal.shape[0]))]
     windows_normal_val = windows_normal[int(np.floor(.8 *  windows_normal.shape[0])):int(np.floor(windows_normal.shape[0]))]
 
+    ## build loader
     train_loader = torch.utils.data.DataLoader(data_utils.TensorDataset(
         torch.from_numpy(windows_normal_train).float().view(([windows_normal_train.shape[0],w_size]))
     ) , batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
