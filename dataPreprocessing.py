@@ -17,26 +17,28 @@ from adtk.data import validate_series
 from adtk.visualization import plot
 from adtk.detector import SeasonalAD
 from adtk.transformer import PcaProjection
+from utils import printDataInfo
+from utils import plotData
 
 class DataProcessing:
     def useADTKLibraryPreprocessing(self,dataset):
         print("useLibraryPreprocessing data.shape",dataset.shape)
         dataset = validate_series(dataset)
-        dataset = PcaProjection(k=20).fit_transform(dataset)
+        dataset = PcaProjection(k=25).fit_transform(dataset)
         print("after useLibraryPreprocessing data.shape",dataset.shape)
         
         return dataset
     
     def dataPreprocessing(self,dataset):
+        
         for i in list(dataset): 
             dataset[i]=dataset[i].apply(lambda x: str(x).replace("," , "."))
         # Transform all columns into float64 
         
         dataset = dataset.astype(float)
-        print("dataset dtype",dataset.dtypes)
-        print("dataset head",dataset)
+        # print("dataset dtype",dataset.dtypes)
 
-        dataset = self.useADTKLibraryPreprocessing(dataset)
+        # dataset = self.useADTKLibraryPreprocessing(dataset)
         # 不知道為啥read 進來的float .會變成,
 
         # #### Normalization
@@ -63,40 +65,39 @@ class DataProcessing:
         normal["Timestamp"] = pd.to_datetime(normal["Timestamp"],format="%d/%m/%Y %I:%M:%S %p")
         normal.set_index("Timestamp",inplace=True)
         print("normal data.shape",normal.shape)
-        print("normal index",normal.index)
-        print("normal head(2)",normal.head(2))
-
         ################################## Attack
         attack = pd.read_csv(attack_data_path)#, nrows=1000)
         # attack = attack.drop(["Timestamp" , "Normal/Attack" ] , axis = 1)
+        printDataInfo(attack)
         labels = [ float(label!= 'Normal' ) for label  in attack["Normal/Attack"].values]
         attack = attack.drop(["Normal/Attack" ] , axis = 1)
         attack["Timestamp"] = attack["Timestamp"].str.strip()
         attack["Timestamp"] = pd.to_datetime(attack["Timestamp"],format="%d/%m/%Y %I:%M:%S %p")
         attack.set_index("Timestamp",inplace=True)
+        plotData([],attack)
 
         return normal,attack,labels
 
     def WADI_loadData(self,normal_data_path,attack_data_path):
         #### Normal 
         normal = pd.read_csv(normal_data_path)#, nrows=1000)
-        print("normal.head(2)",normal.head(2))
+        # print("normal.head(2)",normal.head(2))
         normal = normal.drop(["Row","Date","Time" , "Normal/Attack" ] , axis = 1)
         # normal= normal.dropna(axis=1)
         normal= normal.fillna(0)
-        print("normal.head(2)",normal.head(2))
+        # print("normal.head(2)",normal.head(2))
         # drop column with at leat one NAN
 
         #### Attack
 
         # attack= pd.read_csv(attack_data_path,sep=";")
         attack= pd.read_csv(attack_data_path)
-        print("attack.head(2)",attack.head(2))
+        # print("attack.head(2)",attack.head(2))
         labels = [ float(label!= 'Normal' ) for label  in attack["Normal/Attack"].values]
         attack = attack.drop(["Row","Date","Time" , "Normal/Attack" ] , axis = 1)
         attack=attack.fillna(0)
         # attack= attack.dropna(axis=1)
-        print("attack.head(2)",attack.head(2))
+        # print("attack.head(2)",attack.head(2))
 
 
         
@@ -139,4 +140,4 @@ class DataProcessing:
             torch.from_numpy(windows_attack).float().view(([windows_attack.shape[0],w_size]))
         ) , batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-        return train_loader,val_loader,test_loader,windows_normal,labels
+        return train_loader,val_loader,test_loader,windows_normal,labels,attack

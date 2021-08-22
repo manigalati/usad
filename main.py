@@ -3,15 +3,16 @@
 
 ######################### parameter
 
-batch_size =  919
+batch_size =  7919
 #BATCH_SIZE = 100 
-n_epochs=  50
+n_epochs=  100
 hidden_size = 40
 window_size=12
 # normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
 # attack_data_path="input/SWaT_Dataset_Attack_v0.csv"
 normal_data_path="/workspace/lab/anomaly_detecton/dataset/SWAT/SWaT_Dataset_Normal_v1.csv"
 attack_data_path="/workspace/lab/anomaly_detecton/dataset/SWAT/SWaT_Dataset_Attack_v0.csv"
+# attack_data_path="/workspace/lab/anomaly_detecton/dataset/SWAT/SWaT_Dataset_Attack_v0_test.csv"
 # normal_data_path="/workspace/lab/anomaly_detecton/dataset/WADI.A1_9_Oct_2017/WADI_normal_pre_2.csv"
 # attack_data_path="/workspace/lab/anomaly_detecton/dataset/WADI.A1_9_Oct_2017/WADI_Attack_pre.csv"
                 #  "/workspace/lab/anomaly_detecton/dataset/WADI.A1_9_Oct_2017"
@@ -47,14 +48,14 @@ class execution:
     def preProcess(self,modelName):
 
         # train_loader 每次iter 取出來的東西是一個windows 攤平成一維的數據
-        self.train_loader,self.val_loader,self.test_loader,self.windows_normal,self.labels= self.dataPreprocessingObj.handleData(normal_data_path,attack_data_path,window_size,hidden_size,batch_size)
+        self.train_loader,self.val_loader,self.test_loader,self.windows_dataset,self.labels,self.attack= self.dataPreprocessingObj.handleData(normal_data_path,attack_data_path,window_size,hidden_size,batch_size)
 
-        input_feature_size = self.windows_normal.shape[2]
-        windows_size = self.windows_normal.shape[1]
+        input_feature_size = self.windows_dataset.shape[2]
+        windows_size = self.windows_dataset.shape[1]
         # w_size = 一整個window 的input 變成一維
-        w_size=self.windows_normal.shape[1]*self.windows_normal.shape[2]
+        w_size=self.windows_dataset.shape[1]*self.windows_dataset.shape[2]
         # w_size = 一整個window 的latent 變成一維
-        z_size=self.windows_normal.shape[1]*hidden_size
+        z_size=self.windows_dataset.shape[1]*hidden_size
 
 
         if modelName == "USAD":
@@ -77,28 +78,38 @@ class execution:
         self.preProcess(modelName)
         history = self.model.training_all(n_epochs,self.train_loader,self.val_loader)
         print("model",self.model)
-        plot_history(history)
+        plot_history(history,modelName)
 
         self.model.saveModel()
 
     
 
     def test(self,modelName):
+
+
         self.preProcess(modelName)
         ####### Testing
         ## 這個result 是越高越可能是anomaly
         results=self.model.testing_all(self.test_loader)
 
+        # # print("results.shape",results.size())
+        # print("torch.stack(results[:-1])",torch.stack(results[:-1]).cpu().size())
+        # print("result[-1].shape",(results[-1].cpu()).size())
 
 
+        ### windows 的 label
         y_True = self.seqLabel_2_WindowsLabels(self.labels)
 
+        # 傳回來的result dim沒調好 需要flatten
+        ### windows 的 pred
         y_pred=np.concatenate([torch.stack(results[:-1]).flatten().detach().cpu().numpy(),
                                     results[-1].flatten().detach().cpu().numpy()])
 
+        # print("y_pred.shape",y_pred.shape)
+        # print("y_True.shape",np.array(y_True).shape)
 
-        # print("y_test len ,y_pre len",len(y_test),len(y_pred))
-        threshold=ROC(y_True,y_pred)
+        threshold=ROC(y_True,y_pred,modelName)
+        plotAnomalyScore(window_size,self.attack,y_pred,threshold,y_True,modelName)
         printResult(y_True,y_pred,threshold)
         print("threshold",threshold)
 
