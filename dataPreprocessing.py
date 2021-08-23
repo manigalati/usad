@@ -38,7 +38,7 @@ class DataProcessing:
         dataset = dataset.astype(float)
         # print("dataset dtype",dataset.dtypes)
 
-        dataset = self.useADTKLibraryPreprocessing(dataset)
+        # dataset = self.useADTKLibraryPreprocessing(dataset)
         # 不知道為啥read 進來的float .會變成,
 
         # #### Normalization
@@ -74,6 +74,7 @@ class DataProcessing:
         attack["Timestamp"] = attack["Timestamp"].str.strip()
         attack["Timestamp"] = pd.to_datetime(attack["Timestamp"],format="%d/%m/%Y %I:%M:%S %p")
         attack.set_index("Timestamp",inplace=True)
+        # attack = attack.drop(["Timestamp"])
         plotData([],attack)
 
         return normal,attack,labels
@@ -109,6 +110,8 @@ class DataProcessing:
 
         normal=self.dataPreprocessing(normal)
         attack=self.dataPreprocessing(attack)
+        print("normal",normal[0:2])
+        print("attack",attack[0:2])
 
         windows_normal=self.seq2Window(normal,window_size)
         print("windows_normal.shape",windows_normal.shape)

@@ -164,9 +164,9 @@ class UsadModel(nn.Module):
                 'encoder': self.encoder.state_dict(),
                 'decoder1': self.decoder1.state_dict(),
                 'decoder2': self.decoder2.state_dict()
-                }, "USAD.pth")
+                }, "model/USAD.pth")
   def loadModel(self):
-      checkpoint = torch.load("USAD.pth")
+      checkpoint = torch.load("model/USAD.pth")
       self.encoder.load_state_dict(checkpoint['encoder'])
       self.decoder1.load_state_dict(checkpoint['decoder1'])
       self.decoder2.load_state_dict(checkpoint['decoder2'])
@@ -267,9 +267,9 @@ class LSTM_UsadModel(nn.Module):
                 'lstm': self.lstm.state_dict(),
                 'decoder1': self.decoder1.state_dict(),
                 'decoder2': self.decoder2.state_dict()
-                }, "USAD.pth")
+                }, "model/USAD.pth")
   def loadModel(self):
-    checkpoint = torch.load("USAD.pth")
+    checkpoint = torch.load("model/USAD.pth")
     self.lstm.load_state_dict(checkpoint['lstm'])
     self.decoder1.load_state_dict(checkpoint['decoder1'])
     self.decoder2.load_state_dict(checkpoint['decoder2'])
@@ -293,9 +293,9 @@ class AutoencoderModel(nn.Module):
     torch.save({
                 'encoder': self.encoder.state_dict(),
                 'decoder': self.decoder.state_dict(),
-                }, "autoencoder.pth")
+                }, "model/autoencoder.pth")
   def loadModel(self):
-      checkpoint = torch.load("autoencoder.pth")
+      checkpoint = torch.load("model/autoencoder.pth")
       self.encoder.load_state_dict(checkpoint['encoder'])
       self.decoder.load_state_dict(checkpoint['decoder'])
 
@@ -365,9 +365,9 @@ class LSTM_AutoencoderModel(nn.Module):
     torch.save({
                 'encoder': self.encoder.state_dict(),
                 'decoder': self.decoder.state_dict(),
-                }, "autoencoder.pth")
+                }, "model/autoencoder.pth")
   def loadModel(self):
-      checkpoint = torch.load("autoencoder.pth")
+      checkpoint = torch.load("model/autoencoder.pth")
       self.encoder.load_state_dict(checkpoint['encoder'])
       self.decoder.load_state_dict(checkpoint['decoder'])
 
@@ -550,9 +550,9 @@ class LSTM_VAE(nn.Module):
                 'encoder': self.encoder.state_dict(),
                 'decoder': self.decoder.state_dict(),
                 # 'anomaly_threshold_estimater': self.anomaly_threshold_estimater.state_dict()
-                }, "LSTM_VAE.pth")
+                }, "model/LSTM_VAE.pth")
   def loadModel(self):
-      checkpoint = torch.load("LSTM_VAE.pth")
+      checkpoint = torch.load("model/LSTM_VAE.pth")
       self.encoder.load_state_dict(checkpoint['encoder'])
       self.decoder.load_state_dict(checkpoint['decoder'])
       # self.anomaly_threshold_estimater.load_state_dict(checkpoint['anomaly_threshold_estimater'])
@@ -784,10 +784,10 @@ class CNN_LSTM(normal_model):
     torch.save({
                 'conv1': self.conv1.state_dict(),
                 'lstm': self.lstm.state_dict(),
-                }, "CNN_LSTM.pth")
+                }, "model/CNN_LSTM.pth")
   ### need to modify this when building new model
   def loadModel(self):
-      checkpoint = torch.load("CNN_LSTM.pth")
+      checkpoint = torch.load("model/CNN_LSTM.pth")
       self.conv1.load_state_dict(checkpoint['conv1'])
       self.lstm.load_state_dict(checkpoint['lstm'])
   ### In most case, you do not need to modify below function when building new model

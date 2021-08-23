@@ -5,7 +5,7 @@
 
 batch_size =  7919
 #BATCH_SIZE = 100 
-n_epochs=  50
+n_epochs=  10
 hidden_size = 40
 window_size=12
 # normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
@@ -39,11 +39,11 @@ import argparse
 # In[4]:
 
 # get_ipython().system('nvidia-smi -L')
-device = get_default_device()
 
 class execution:
     def __init__(self):
         self.dataPreprocessingObj  = DataProcessing()
+        self.device = get_default_device()
 
     def preProcess(self,modelName):
 
@@ -72,7 +72,7 @@ class execution:
             print("model name not found")
             exit()
 
-        self.model = to_device(model,device)
+        self.model = to_device(model,self.device)
 
     def train(self,modelName):
         self.preProcess(modelName)
@@ -82,14 +82,13 @@ class execution:
 
         self.model.saveModel()
 
-    
-
     def test(self,modelName):
 
 
         self.preProcess(modelName)
         ####### Testing
         ## 這個result 是越高越可能是anomaly
+        self.model.loadModel()
         results=self.model.testing_all(self.test_loader)
 
         # # print("results.shape",results.size())

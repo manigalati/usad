@@ -42,7 +42,7 @@ def plot_history(history,modelName):
     plt.legend()
     plt.title('Losses vs. No. of epochs')
     plt.grid()
-    plt.savefig("result/history_"+modelName)
+    plt.savefig("result/"+modelName+"/history")
     
 def histogram(y_test,y_pred):
     plt.figure(figsize=(12,6))
@@ -69,7 +69,7 @@ def ROC(y_test,y_pred,modelName):
     plt.legend(loc=4)
     plt.grid()
     plt.show()
-    plt.savefig("result/ROC_"+modelName)
+    plt.savefig("result/"+modelName+"/ROC")
     plt.clf()
     return tr[idx]
 def printDataInfo(dataset):
@@ -100,7 +100,7 @@ def evaluateResult(y_True,y_pred,threshold,modelName):
 
     recall=float(TP/(TP+FN))
     precision= float(TP/(TP+FP))
-    with open("result/"+modelName+"_result.txt",'a') as resultFile:
+    with open("result/"+modelName+"/result.txt",'a') as resultFile:
         print("-------------------",file=resultFile)
         print("TP:",TP,"TN:",TN,"FP:",FP,"FN:",FN,file=resultFile)
         print("precision:",precision,file=resultFile)
@@ -196,7 +196,7 @@ def plotAnomalyScore(window_size,dataset,windows_anomalyScore,threshold,label,mo
     # anomaly = dataset["Normal/Attack"]
     # anomaly.index = dataset.index
     # anomaly["anomalyScore"] = anomalyScore
-    plt.savefig("result/anomalyScore_"+modelName)
+    plt.savefig("result/"+modelName+"/anomalyScore")
     plt.close()
 
     
