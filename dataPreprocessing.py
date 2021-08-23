@@ -24,7 +24,7 @@ class DataProcessing:
     def useADTKLibraryPreprocessing(self,dataset):
         print("useLibraryPreprocessing data.shape",dataset.shape)
         dataset = validate_series(dataset)
-        dataset = PcaProjection(k=25).fit_transform(dataset)
+        dataset = PcaProjection(k=30).fit_transform(dataset)
         print("after useLibraryPreprocessing data.shape",dataset.shape)
         
         return dataset
@@ -38,7 +38,7 @@ class DataProcessing:
         dataset = dataset.astype(float)
         # print("dataset dtype",dataset.dtypes)
 
-        # dataset = self.useADTKLibraryPreprocessing(dataset)
+        dataset = self.useADTKLibraryPreprocessing(dataset)
         # 不知道為啥read 進來的float .會變成,
 
         # #### Normalization

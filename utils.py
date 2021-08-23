@@ -33,9 +33,10 @@ def to_device(data, device):
     
 def plot_history(history,modelName):
     losses1 = [x['val_loss1'] for x in history]
-    # losses2 = [x['val_loss2'] for x in history]
+    if modelName == "USAD":
+        losses2 = [x['val_loss2'] for x in history]
+        plt.plot(losses2, '-x', label="loss2")
     plt.plot(losses1, '-x', label="loss1")
-    # plt.plot(losses2, '-x', label="loss2")
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
@@ -83,7 +84,7 @@ def printDataInfo(dataset):
     print("number of anomaly :",abnormalCount)
     print("number of normal :",normalCount)
     print("################")
-def evaluateResult(y_True,y_pred,threshold):
+def evaluateResult(y_True,y_pred,threshold,modelName):
     y_pred_anomaly=[ 1 if(x>=threshold) else 0 for x in y_pred]
     TP=0;TN=0;FP=0;FN=0;
     for index,item in enumerate(y_pred_anomaly):
@@ -99,27 +100,28 @@ def evaluateResult(y_True,y_pred,threshold):
 
     recall=float(TP/(TP+FN))
     precision= float(TP/(TP+FP))
-    print("-------------------")
-    print("TP:",TP,"TN:",TN,"FP:",FP,"FN:",FN)
-    print("precision:",precision)
-    print("recall:",recall)
-    print("F1 score",2*precision*recall/(precision+recall))
-    print("TPR",TP/(TP+FN))
-    print("FPR",FP/(TN+FP))
-    print("-------------------")
+    with open("result/"+modelName+"_result.txt",'a') as resultFile:
+        print("-------------------",file=resultFile)
+        print("TP:",TP,"TN:",TN,"FP:",FP,"FN:",FN,file=resultFile)
+        print("precision:",precision,file=resultFile)
+        print("recall:",recall,file=resultFile)
+        print("F1 score",2*precision*recall/(precision+recall),file=resultFile)
+        print("TPR",TP/(TP+FN),file=resultFile)
+        print("FPR",FP/(TN+FP),file=resultFile)
+        print("-------------------",file=resultFile)
 
-def printResult(y_True,y_pred,threshold):
-    print("============== result ==================")
-    y_pred_anomaly=[ 1 if(x>=threshold) else 0 for x in y_pred]
+def printResult(y_True,y_pred,threshold,modelName):
+        y_pred_anomaly=[ 1 if(x>=threshold) else 0 for x in y_pred]
 
-    precision, recall, fscore, support = score(y_True, y_pred_anomaly)
-    ### caculate recall
-    evaluateResult(y_True,y_pred,threshold)
+        precision, recall, fscore, support = score(y_True, y_pred_anomaly)
+        ### caculate recall
+        print("============== result ==================")
+        evaluateResult(y_True,y_pred,threshold,modelName)
 
-    print('precision: {}'.format(precision[0]))
-    print('recall: {}'.format(recall[0]))
-    print('f1score: {}'.format(fscore[0]))
-    print("============== result ==================")
+        print('precision: {}'.format(precision[0]))
+        print('recall: {}'.format(recall[0]))
+        print('f1score: {}'.format(fscore[0]))
+        print("============== result ==================")
     
 
 def confusion_matrix(target, predicted, perc=False):
@@ -138,7 +140,7 @@ def confusion_matrix(target, predicted, perc=False):
 
 
 
-def plotData(featureNameList,dataset,modelName):
+def plotData(featureNameList,dataset):
     print("dataset columns",dataset.columns)
     # featureNameList = ["1_MV_001","1_FFT_001","2_LIT_002","1_AIT_001",\
     #     "2_MCV_101","2_MCV_201","2_MCV_301","2_MCV_401","2_MCV_501",\
@@ -171,13 +173,13 @@ def plotData(featureNameList,dataset,modelName):
         # ax[count-1,0].plot(dataset.index,dataset[column])
         # ax[count-1,0].set_title(column)
     # plt.show()
-    plt.savefig("result/feature_"+modelName)
+    plt.savefig("result/feature")
     plt.close()
     # plotFeature.plot()
 
 
 def plotAnomalyScore(window_size,dataset,windows_anomalyScore,threshold,label,modelName):
-    # plt.figure(figsize=(100,10))
+    plt.figure(figsize=(100,10))
     index = dataset[window_size:].index
     print("index",index)
     plt.plot(index,windows_anomalyScore,'b',label="pred")

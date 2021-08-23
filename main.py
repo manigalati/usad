@@ -5,7 +5,7 @@
 
 batch_size =  7919
 #BATCH_SIZE = 100 
-n_epochs=  100
+n_epochs=  50
 hidden_size = 40
 window_size=12
 # normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
@@ -110,7 +110,7 @@ class execution:
 
         threshold=ROC(y_True,y_pred,modelName)
         plotAnomalyScore(window_size,self.attack,y_pred,threshold,y_True,modelName)
-        printResult(y_True,y_pred,threshold)
+        printResult(y_True,y_pred,threshold,modelName)
         print("threshold",threshold)
 
     def seqLabel_2_WindowsLabels(self,labels):

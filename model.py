@@ -1,6 +1,11 @@
+
+from types import DynamicClassAttribute
 import torch
+from torch import optim
 import torch.nn as nn
 import gc
+
+from torch.optim import optimizer
 
 from utils import *
 device = get_default_device()
@@ -114,7 +119,7 @@ class UsadModel(nn.Module):
               optimizer2.step()
               optimizer2.zero_grad()
               
-          result = evaluate(self, val_loader, epoch+1)
+          result = self.evaluate(self, val_loader, epoch+1)
           self.epoch_end(epoch, result)
           history.append(result)
       return history
@@ -165,6 +170,9 @@ class UsadModel(nn.Module):
       self.encoder.load_state_dict(checkpoint['encoder'])
       self.decoder1.load_state_dict(checkpoint['decoder1'])
       self.decoder2.load_state_dict(checkpoint['decoder2'])
+  def evaluate(self, val_loader, n):
+      outputs = [self.validation_step(to_device(batch,device), n) for [batch] in val_loader]
+      return self.validation_epoch_end(outputs)
   
 class LSTM_UsadModel(nn.Module):
   def __init__(self, w_size, z_size,input_feature_dim,windows_size):
@@ -203,7 +211,7 @@ class LSTM_UsadModel(nn.Module):
               #batch 是window_size*input_features_dim的一維陣列
               batch=to_device(batch,device)
               
-               #Train AE1
+               #Train AEresult1
               loss1,loss2 = self.training_step(batch,epoch+1)
               loss1.backward()
               optimizer1.step()
@@ -216,7 +224,7 @@ class LSTM_UsadModel(nn.Module):
               optimizer2.step()
               optimizer2.zero_grad()
               
-          result = evaluate(self, val_loader, epoch+1)
+          result = self.evaluate(self, val_loader, epoch+1)
           self.epoch_end(epoch, result)
           history.append(result)
       return history
@@ -265,6 +273,9 @@ class LSTM_UsadModel(nn.Module):
     self.lstm.load_state_dict(checkpoint['lstm'])
     self.decoder1.load_state_dict(checkpoint['decoder1'])
     self.decoder2.load_state_dict(checkpoint['decoder2'])
+  def evaluate(self, val_loader, n):
+      outputs = [self.validation_step(to_device(batch,device), n) for [batch] in val_loader]
+      return self.validation_epoch_end(outputs)
       
 
   
@@ -307,7 +318,7 @@ class AutoencoderModel(nn.Module):
               optimizer1.zero_grad()
               
               
-          result = evaluate(self, val_loader, epoch+1)
+          result = self.evaluate(self, val_loader, epoch+1)
           self.epoch_end(epoch, result)
           history.append(result)
       return history
@@ -339,6 +350,9 @@ class AutoencoderModel(nn.Module):
     
   def epoch_end(self, epoch, result):
     print("Epoch [{}], val_loss1: {:.4f}".format(epoch, result['val_loss1']))
+  def evaluate(self, val_loader, n):
+      outputs = [self.validation_step(to_device(batch,device), n) for [batch] in val_loader]
+      return self.validation_epoch_end(outputs)
 
 
 class LSTM_AutoencoderModel(nn.Module):
@@ -376,7 +390,7 @@ class LSTM_AutoencoderModel(nn.Module):
               optimizer1.zero_grad()
               
               
-          result = evaluate(self, val_loader, epoch+1)
+          result = self.evaluate(self, val_loader, epoch+1)
           self.epoch_end(epoch, result)
           history.append(result)
       return history
@@ -444,7 +458,7 @@ class LSTM_VAE_ENCODER(nn.Module):
 
         kld = -0.5 * torch.mean(1 + logv - mean.pow(2) - logv.exp()).to('cuda')
 
-        return z, kld
+        return z, kld,hidden
 
 
 class LSTM_VAE_DECODER(nn.Module):
@@ -473,6 +487,49 @@ class LSTM_VAE_DECODER(nn.Module):
         return out
 
 
+class dynamic_anomaly_threshold(nn.Module):
+  def __init__(self, hidden_size):
+    super().__init__()
+    self.dynamic_anomaly_threshold_NN = nn.Linear(hidden_size,1)
+    self.loss_hidden_set=[]
+    # self.testing_loss_hidden_set=[]
+  def add_data(self,loss,hidden):
+    # print("loss",loss,"hidden",hidden)
+    # print("type loss",type(loss),"type hidden",type(hidden))
+    # print("loss.shape",loss.shape,"hidden.shape",hidden.shape)
+    self.loss_hidden_set.append({"loss":loss.detach(),"hidden":hidden.detach()})
+    # self.loss_hidden_set.append({"loss":torch.randn(1).cuda(),"hidden":torch.randn(1,46).cuda()})
+    
+  # def add_testing_data(self,hidden):
+  #   self.testing_loss_hidden_set.append({"hidden":hidden})
+  def training_all(self):
+    optimizer = torch.optim.Adam(list(self.parameters()))
+    count=0
+    for epoch in range(40):
+          print("epoch ",epoch)
+          for loss_hidden in self.loss_hidden_set:
+                count+=1
+                pred=  self.dynamic_anomaly_threshold_NN(loss_hidden["hidden"])
+                loss = torch.mean((loss_hidden["loss"]- pred)**2)
+                print("count",count,"loss",loss,"pred",pred[:10],"label",loss_hidden["loss"][:10])
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+  def testing_all(self):
+      result = []
+      with torch.no_grad():
+        for loss_hidden in self.loss_hidden_set:
+          result.append(self.dynamic_anomaly_threshold_NN(loss_hidden["hidden"]))
+    
+      return result
+  def getThreshold(self):
+        return self.testing_all()
+      
+                
+          
+    
+
+
 class LSTM_VAE(nn.Module):
   def __init__(self, hidden_size,latent_size,input_feature_dim,windows_size):
     super().__init__()
@@ -483,6 +540,7 @@ class LSTM_VAE(nn.Module):
     self.latent_size = latent_size
     self.output_feature_dim = input_feature_dim
 
+    # self.anomaly_threshold_estimater = dynamic_anomaly_threshold(self.hidden_size)
     self.encoder= LSTM_VAE_ENCODER(input_feature_dim, self.hidden_size, self.num_layers,self.latent_size,windows_size)
     self.decoder= LSTM_VAE_DECODER(self.latent_size,self.num_layers,self.output_feature_dim,windows_size)
 
@@ -491,17 +549,22 @@ class LSTM_VAE(nn.Module):
     torch.save({
                 'encoder': self.encoder.state_dict(),
                 'decoder': self.decoder.state_dict(),
+                # 'anomaly_threshold_estimater': self.anomaly_threshold_estimater.state_dict()
                 }, "LSTM_VAE.pth")
   def loadModel(self):
       checkpoint = torch.load("LSTM_VAE.pth")
       self.encoder.load_state_dict(checkpoint['encoder'])
       self.decoder.load_state_dict(checkpoint['decoder'])
+      # self.anomaly_threshold_estimater.load_state_dict(checkpoint['anomaly_threshold_estimater'])
 
 
   def caculateMSE(self,batch,n,print_output=False):
     # print("batch.shape ",batch.shape)
     # print("batch",batch)
-    latent,kld = self.encoder(batch)
+    latent,kld ,hidden= self.encoder(batch)
+    # hidden_history_list=[]
+    # if action == "training":
+    #       hidden_history_list.append(hidden)
     # print("latent.shape ",latent.shape)
     latent=torch.reshape(latent,(latent.shape[0],1,latent.shape[1]))
     w1 = self.decoder(latent)
@@ -513,36 +576,65 @@ class LSTM_VAE(nn.Module):
     if print_output == True:
         print("testcase batchFinal",batchFinal)
         print("w1",w1)
+
+    # print("hidden",hidden.shape)
+    # print("loss1.shape",loss1.shape)
+    
+    # self.anomaly_threshold_estimater.add_data(loss1,hidden) 
     return loss1,kld
 
-  def training_step(self, batch, n):
-    kld_times = 0;
-    if n >10 and kld_times < 1:
-      kld_times += 0.1
+
+
+  def training_step(self, batch, n,kld_times):
 
     loss,kld = self.caculateMSE(batch,n)
     loss = torch.mean(loss)
     loss += kld_times * kld
-    # print("kld",kld)
     return loss
 
+
+  def VAE_printResult(self,y_test,y_pred):
+      threshold = [ x  for x in self.anomaly_threshold_estimater.getThreshold()]
+      print("============== VAE result ==================")
+      print("threshold[:5]",threshold[:5])
+      # print("threshold.shape",threshold.shape)
+      print("threshold len",len(threshold),"y_pred len",len(y_pred))
+      y_pred=[ 1 if(x>=threshold[index]) else 0 for index,x in enumerate(y_pred)]
+
+      precision, recall, fscore, support = score(y_test, y_pred)
+
+      print('precision: {}'.format(precision[0]))
+      print('recall: {}'.format(recall[0]))
+      print('f1score: {}'.format(fscore[0]))
+      print("============== result ==================")
   def training_all(self,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
       history = []
       optimizer1 = opt_func(list(self.encoder.parameters())+list(self.decoder.parameters()))
+      kld_times = 0
       for epoch in range(epochs):
+          if epoch >10 and kld_times < 1:
+              kld_times += 0.1
+          print("epoch ",epoch,"kld_times:",kld_times)
           for [batch] in train_loader:
               batch=to_device(batch,device)
               
                #Train AE1
-              loss1= self.training_step(batch,epoch+1)
+              loss1= self.training_step(batch,epoch+1,kld_times)
+
               loss1.backward()
               optimizer1.step()
               optimizer1.zero_grad()
+
+              # dynamic_anomaly_threshold_loss.backward()
+              # optimizer2.step()
+              # optimizer2.zero_grad()
               
               
-          result = evaluate(self, val_loader, epoch+1)
+          result = self.evaluate(self, val_loader, epoch+1)
           self.epoch_end(epoch, result)
           history.append(result)
+      print("finish training")
+      # self.anomaly_threshold_estimater.training_all()
       return history
 
   def testing_all(self, test_loader, alpha=0.5,beta=0.5):
@@ -557,12 +649,77 @@ class LSTM_VAE(nn.Module):
       with torch.no_grad():
         # w1,_ = self.encoder(batch)
         # w1=self.decoder(w1)
+        print_output=False
         if count == 1:
-          loss,_ = self.caculateMSE(batch,count,print_output=True)
-        else:
-          loss,_ = self.caculateMSE(batch,count)
+              print_output = True
+        loss,_ = self.caculateMSE(batch,count,print_output)
         results.append(loss)
 
+
+      # del w1
+      torch.cuda.empty_cache()
+      gc.collect()
+    return results
+
+  def validation_step(self, batch, n):
+    loss1=self.training_step(batch,n,0)
+    return {'val_loss1': loss1}
+        
+  def validation_epoch_end(self, outputs):
+    batch_losses1 = [x['val_loss1'] for x in outputs]
+    epoch_loss1 = torch.stack(batch_losses1).mean()
+    return {'val_loss1': epoch_loss1.item()}
+    
+  def epoch_end(self, epoch, result):
+    print("Epoch [{}], val_loss1: {:.4f}".format(epoch, result['val_loss1']))
+  def evaluate(self,model, val_loader, n):
+      outputs = [model.validation_step(to_device(batch,device), n) for [batch] in val_loader]
+      return model.validation_epoch_end(outputs)
+
+
+class normal_model(nn.Module):
+  def training_step(self, batch, n):
+
+    loss= self.caculateMSE(batch,n)
+    loss = torch.mean(loss)
+    return loss
+
+  def training_all(self,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
+      history = []
+      optimizer1 = opt_func(list(self.parameters()))
+      # print("self paramter",list(self.encoder.parameters())+list(self.decoder.parameters()))
+      for epoch in range(epochs):
+          for [batch] in train_loader:
+              batch=to_device(batch,device)
+              
+                #Train AE1
+              loss1= self.training_step(batch,epoch+1)
+              loss1.backward()
+              optimizer1.step()
+              optimizer1.zero_grad()
+              
+          result = self.evaluate(val_loader, epoch+1)
+          self.epoch_end(epoch, result)
+          history.append(result)
+      return history
+
+  def testing_all(self,test_loader, alpha=0.5,beta=0.5):
+    count=0
+    results=[]
+    for [batch] in test_loader:
+      # print("batch shape",batch.shape)
+      count+=1
+      print("iter ",count)
+      batch=to_device(batch,device)
+
+      with torch.no_grad():
+        # w1,_ = self.encoder(batch)
+        # w1=self.decoder(w1)
+        if count == 1:
+          loss = self.caculateMSE(batch,count,print_output=True)
+        else:
+          loss = self.caculateMSE(batch,count)
+        results.append(loss)
 
       # del w1
       torch.cuda.empty_cache()
@@ -573,15 +730,18 @@ class LSTM_VAE(nn.Module):
     loss1=self.training_step(batch,n)
     return {'val_loss1': loss1}
         
-  def validation_epoch_end(self, outputs):
+  def validation_epoch_end(self,outputs):
     batch_losses1 = [x['val_loss1'] for x in outputs]
     epoch_loss1 = torch.stack(batch_losses1).mean()
     return {'val_loss1': epoch_loss1.item()}
     
-  def epoch_end(self, epoch, result):
+  def epoch_end(self,epoch, result):
     print("Epoch [{}], val_loss1: {:.4f}".format(epoch, result['val_loss1']))
+  def evaluate(self, val_loader, n):
+      outputs = [self.validation_step(to_device(batch,device), n) for [batch] in val_loader]
+      return self.validation_epoch_end(outputs)
 
-class CNN_LSTM(nn.Module):
+class CNN_LSTM(normal_model):
   ### need to modify this when building new model
   def __init__(self, latent_size,input_feature_dim,windows_size):
     super().__init__()
@@ -631,86 +791,24 @@ class CNN_LSTM(nn.Module):
       self.conv1.load_state_dict(checkpoint['conv1'])
       self.lstm.load_state_dict(checkpoint['lstm'])
   ### In most case, you do not need to modify below function when building new model
-  def training_step(self, batch, n):
-    return general_training_step(self,batch,n)
+  # def training_step(self, batch, n):
+  #   return general_training_step(self,batch,n)
 
-  def training_all(self,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
-    return general_training_all(self,epochs,train_loader,val_loader,opt_func)
+  # def training_all(self,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
+  #   return general_training_all(self,epochs,train_loader,val_loader,opt_func)
 
-  def testing_all(self, test_loader, alpha=0.5,beta=0.5):
-    return general_testing_all(self,test_loader,alpha,beta)
+  # def testing_all(self, test_loader, alpha=0.5,beta=0.5):
+  #   return general_testing_all(self,test_loader,alpha,beta)
 
-  def validation_step(self, batch, n):
-    return general_validation_step(self,batch,n)
+  # def validation_step(self, batch, n):
+  #   return general_validation_step(self,batch,n)
         
-  def validation_epoch_end(self, outputs):
-    return general_validation_epoch_end(outputs)
+  # def validation_epoch_end(self, outputs):
+  #   return general_validation_epoch_end(outputs)
     
-  def epoch_end(self, epoch, result):
-    general_epoch_end(epoch,result)
+  # def epoch_end(self, epoch, result):
+  #   general_epoch_end(epoch,result)
 
 ################################################### normal model template
-def general_training_step(model, batch, n):
-
-  loss= model.caculateMSE(batch,n)
-  loss = torch.mean(loss)
-  return loss
-
-def general_training_all(model,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
-    history = []
-    optimizer1 = opt_func(list(model.parameters()))
-    # print("model paramter",list(model.encoder.parameters())+list(model.decoder.parameters()))
-    for epoch in range(epochs):
-        for [batch] in train_loader:
-            batch=to_device(batch,device)
-            
-              #Train AE1
-            loss1= model.training_step(batch,epoch+1)
-            loss1.backward()
-            optimizer1.step()
-            optimizer1.zero_grad()
-            
-        result = evaluate(model, val_loader, epoch+1)
-        model.epoch_end(epoch, result)
-        history.append(result)
-    return history
-
-def general_testing_all(model, test_loader, alpha=0.5,beta=0.5):
-  count=0
-  results=[]
-  for [batch] in test_loader:
-    # print("batch shape",batch.shape)
-    count+=1
-    print("iter ",count)
-    batch=to_device(batch,device)
-
-    with torch.no_grad():
-      # w1,_ = model.encoder(batch)
-      # w1=model.decoder(w1)
-      if count == 1:
-        loss = model.caculateMSE(batch,count,print_output=True)
-      else:
-        loss = model.caculateMSE(batch,count)
-      results.append(loss)
-
-    # del w1
-    torch.cuda.empty_cache()
-    gc.collect()
-  return results
-
-def general_validation_step(model, batch, n):
-  loss1=model.training_step(batch,n)
-  return {'val_loss1': loss1}
-      
-def general_validation_epoch_end(outputs):
-  batch_losses1 = [x['val_loss1'] for x in outputs]
-  epoch_loss1 = torch.stack(batch_losses1).mean()
-  return {'val_loss1': epoch_loss1.item()}
-  
-def general_epoch_end(epoch, result):
-  print("Epoch [{}], val_loss1: {:.4f}".format(epoch, result['val_loss1']))
 
 #############################################3
-def evaluate(model, val_loader, n):
-    outputs = [model.validation_step(to_device(batch,device), n) for [batch] in val_loader]
-    return model.validation_epoch_end(outputs)
