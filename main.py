@@ -115,15 +115,13 @@ class execution:
 
         input_output_window_result = self.model.get_intput_output_window_result()
         print("input_output_window_result[input]",input_output_window_result["input"][:,-1,0])
-        print("self.attack",self.attack[window_size:])
-        print("self.original_attack",self.origin_attack[window_size:])
+        print("self.attack",self.attack[window_size-1:])
+        print("self.original_attack",self.origin_attack[window_size-1:])
         print("input_output_window_result[output]",input_output_window_result["output"][:,-1,0])
         plotFeatureObj.plot_anomalyFeature(
-                 self.origin_attack,
                  input_output_window_result["input"][:,-1,:],
                  input_output_window_result["output"][:,-1,:],
                  input_output_window_result["loss"],
-                 window_size
                  )
 
         printResult(y_True, y_anomaly_score, threshold, modelName)

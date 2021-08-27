@@ -9,6 +9,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from torch.utils.data.dataset import Subset
 import seaborn as sns
+from datetime import datetime, timedelta
+import matplotlib.dates as mdates
 import torch
 from sklearn import preprocessing
 from sklearn.metrics import precision_recall_fscore_support as score
@@ -28,7 +30,7 @@ from adtk.detector import SeasonalAD
 def seqLabel_2_WindowsLabels(window_size, labels):
     # 將seq label 變成windows_labels
     windows_labels = []
-    for i in range(len(labels)-window_size):
+    for i in range(len(labels)-window_size+1):
         windows_labels.append(list(np.int_(labels[i:i+window_size])))
     # 這邊就是windows裡面只要有一個是anomaly整段windows都標記成anomaly
     y_True = [1.0 if (np.sum(window) > 0)
@@ -179,7 +181,7 @@ def anomalyScore2anomaly(anomalyScore, threshold):
 def plotAnomalyScore(window_size, dataset, windows_anomalyScore, threshold, label, modelName):
     anomaly = anomalyScore2anomaly(windows_anomalyScore, threshold)
     plt.figure(figsize=(100, 10))
-    index = dataset[window_size:].index
+    index = dataset[window_size-1:].index
     # print("index", index)
     anomaly_df = pd.DataFrame(data = anomaly,index = index,columns=["label"])
     anomaly_df = anomaly_df[anomaly_df["label"] == True]
@@ -209,74 +211,55 @@ def plotAnomalyScore(window_size, dataset, windows_anomalyScore, threshold, labe
 
 class plotFeature:
     def __init__(self,anomaly_info_file_path,origin_dataset,modelName,windows_size):
-        self.feature_info_dict={}
-        self.anomaly_info=self.getAttackFeatureInfo(anomaly_info_file_path)
-        self.featureNameList =  self.getFeatureNameList()
         self.origin_dataset=origin_dataset
         self.modelName = modelName
         self.window_size = windows_size
-        self.plotOriginalData()
-        
-    def getFeatureNameList(self):
-        featureNameList =  [x for x in self.feature_info_dict.keys()]
-        return featureNameList[:5]
+        self.anomaly_info=self.getAttackFeatureInfo(anomaly_info_file_path)
+        self.anomaly_time_dict= self.set_anomaly_time_dict(self.anomaly_info)
+        #### plot_anomaly 的namelist 改這個
+        self.anomaly_featureNameList =  self.get_anomaly_FeatureNameList(self.anomaly_time_dict)
+        ### plot origin 的namelist 改這個
+        # self.plotOriginalData(["AIT202"])
+        self.plotOriginalData(self.anomaly_featureNameList)
+        # print("self.anomaly_time_dict",self.anomaly_time_dict)
 
+    def getAttackFeatureInfo(self,attackFeatureInfo_csv_path):
+        df = pd.read_csv(attackFeatureInfo_csv_path)
+        df= df.dropna(axis=0,subset=["End Time"])
+        date_list = [x.split()[0]+" " for x in df["Start Time"].astype(str)]
+        date_list = pd.Series(date_list)
+        df["End Time"] = pd.to_datetime((date_list + df["End Time"] ).str.strip(),format="%d/%m/%Y %H:%M:%S")
+        df["Start Time"] = pd.to_datetime(df["Start Time"].str.strip(),format="%d/%m/%Y %H:%M:%S")
+        # df.drop(df.tail(5).index,inplace=True)
+        # print("df",df[["End Time","Start Time"]])
+        # print("4 df\n",df[["Start Time","End Time"]])
+        return df
+    def set_anomaly_time_dict(self,anomaly_info):
+        result={}
+        for index,row in anomaly_info.iterrows():
+            featureNameArray = row["Attack Point"]
+            for featureName  in featureNameArray.split(","):
+                featureName = featureName.strip().replace("-","")
+                result.setdefault(featureName,[]).append((row["Start Time"],row["End Time"]))
+
+        return result
+        # print("feature_info_dict\n",self.feature_info_dict)
+            
+    def get_anomaly_FeatureNameList(self,anoamly_time_dict):
+        featureNameList =  [x for x in anoamly_time_dict]
+        return featureNameList[:5]
 
     def dataFrameTime2Index(self,dataFrameTime):
         df = self.origin_dataset.reset_index()
-        return df[df["Timestamp"] == dataFrameTime].index
-    def seqIndex2WindowIndex(self,index):
-        return index - self.window_size
-
-    def getAnomalyScoreSortByTime(self,dataFrameTimeList,loss):
-        with open("result/"+self.modelName+"/loss_cause.txt","a") as f:
-            for dataFrameTime in dataFrameTimeList:
-                index = self.seqIndex2WindowIndex(self.dataFrameTime2Index(dataFrameTime))
-                # print("dataFrameTime:",dataFrameTime,"index:",index)
-                print("time:",dataFrameTime,"loss:",loss[index].argsort(),file=f)
-                # print("time:",dataFrameTime,"loss:",loss[index].argsort())
         
-    def plotOriginalData(self):
-        plt.figure(figsize=(150, 15))
-        # fig,ax  = plt.subplots(3,1)
-        plt.title("original_features")
-
-        for index, featureName in enumerate(self.featureNameList):
-            ax = plt.subplot(len(self.featureNameList), 1, index+1)
-            plt.plot(self.origin_dataset.index, self.origin_dataset[featureName],label="origin_data",color='b')
-            plt.gca().set_title(featureName)
-            # plt.xticks(self.get_anomaly_time_by_FeatureName(featureName),rotation=90)
-
-        plt.savefig("result/"+self.modelName+"/original_feature")
-        plt.close()
-
-    def plotData(self,featureNameList, dataset, input_Feature_list, output_Feature_list, loss, window_size,feature_info_dict={}):
-        # print("dataset columns",dataset.columns)
-        # ,{"1_FFT_001":,"2_LIT_002","1_AIT_001",\
-        # "2_MCV_101","2_MCV_201","2_MCV_301","2_MCV_401","2_MCV_501",\
-        # "2_MCV_601","2_MCV_101","2_MCV_201","1_AIT_002","2_MV_003",\
-        # "2_MCV_007","1_P_006"]
-        # FinalfeatureNameList=[]
-        # for columnName in dataset.columns:
-        #     print("columnName",columnName)
-            # for featureName in featureNameList:
-            #     if columnName.find(featureName) != -1:
-            #         FinalfeatureNameList.append(columnName)
-        # print("finalFeatureNameList",FinalfeatureNameList)
-        # plotFeature= dataset[FinalfeatureNameList]
-        plt.figure(figsize=(150, 15))
-        plt.title("features_anomaly")
-        print("featureNameList",featureNameList)
-        for index,featureName in enumerate(featureNameList):
-            self.plot_origin_predict_anomalyScore_singleFeature(
-                 featureNameList,index,dataset, input_Feature_list, output_Feature_list, loss,window_size,feature_info_dict)
-        plt.legend()
-        plt.savefig("result/"+self.modelName+"/feature_anomaly")
-        plt.close()
+        index = df[df["Timestamp"] == dataFrameTime].index
+        return index
+    def seqIndex2WindowIndex(self,index):
+        return index - self.window_size +1
 
     def get_anomaly_time_by_FeatureName(self,featureName):
         result=[]
-        [ result.extend(x) for x in self.feature_info_dict[featureName]]
+        [ result.extend(x) for x in self.anomaly_time_dict[featureName]]
         return result
 
     def featureName2index(self,featureName):
@@ -286,62 +269,91 @@ class plotFeature:
                 return count
             else:
                 count+=1
-        
-    def plot_origin_predict_anomalyScore_singleFeature(self,featureNameList,indexOfFeatureNameList, dataset,inputFeature_list, outputFeature_list, 
-        loss,window_size,feature_info_dict={}):
 
+
+    def plotOriginalData(self,featureNameList):
+        plt.figure(figsize=(100, 50))
+        # fig,ax  = plt.subplots(3,1)
+        plt.title("original_features")
+
+        print("plotOriginalData featureNameList",featureNameList)
+        for index, featureName in enumerate(featureNameList):
+            ax = plt.subplot(len(featureNameList), 1, index+1)
+            print("plotOriginalData featurename",featureName)
+            data = self.origin_dataset[featureName]
+            data = data.astype(float)
+            plt.plot(self.origin_dataset.index, data,label="origin_data",color='b')
+            plt.gca().set_title(featureName)
+            plt.xticks(self.get_anomaly_time_by_FeatureName(featureName),rotation=90)
+
+        plt.savefig("result/"+self.modelName+"/original_feature")
+        plt.close()
+
+    def plot_anomalyFeature(self,input_window,output_window,loss):
+        self.plot_input_output_anomalyScore(self.anomaly_featureNameList ,input_window,output_window,loss)
+        self.getAnomalyScoreSortByTime(loss)
+
+
+    def plot_input_output_anomalyScore(self,featureNameList, input_Features_list, output_Features_list, loss_):
+
+        plt.figure(figsize=(100, 50))
+
+        print("featureNameList",featureNameList)
+
+        for indexOfFeatureNameList,featureName in enumerate(featureNameList):
+            dimIndex = self.featureName2index(featureName) 
+            input_Feature_list=input_Features_list[:,dimIndex]
+            output_Feature_list=output_Features_list[:,dimIndex]
+            loss = loss_[:,dimIndex]
+
+            print("=========plot_input_output_anoamlyScore========== ")
+            print("dimIndex",dimIndex,"featureName ",featureName)
+            print("origin_without_preProcessing_data",self.origin_dataset[featureName][self.window_size-1:])
+            print("inputFeature_list",input_Feature_list)
+            print("outputFeature_list",output_Feature_list)
+            print("=========plot_input_output_anoamlyScore========== ")
+            plot_index = self.origin_dataset.index[self.window_size-1:]
+
+            self.plot_input_output_anomalyScore_singleFeature(
+                 featureNameList,indexOfFeatureNameList,plot_index, input_Feature_list, output_Feature_list, loss)
+
+        plt.legend()
+        plt.savefig("result/"+self.modelName+"/input_output_anomalySocre")
+        plt.close()
+
+    def plot_input_output_anomalyScore_singleFeature(self,featureNameList,indexOfFeatureNameList, plot_index,inputFeature_list=None, 
+        outputFeature_list =None,loss=None):
         featureName = featureNameList[indexOfFeatureNameList]
-        index = self.featureName2index(featureName) 
-        
-        print("index",index)
-        print("featureName ",featureName)
-        print("origin_without_preProcessing_data",dataset[featureName][window_size:])
-        print("inputFeature_list",inputFeature_list[:,index])
-        print("outputFeature_list",outputFeature_list[:,index])
-        print("loss",loss[:,index])
-
         ax = plt.subplot(len(featureNameList), 1, indexOfFeatureNameList+1)
-        # plt.plot(dataset.index, dataset[featureName],label="origin_data",color='b')
-        plt.plot(dataset.index[window_size:], inputFeature_list[:, index],label="input",color='c')
-        plt.plot(dataset.index[window_size:], outputFeature_list[:, index],label="output",color='k')
-        plt.plot(dataset.index[window_size:], loss[:, index],label="loss",color='r')
-        plt.xticks(self.get_anomaly_time_by_FeatureName(featureName),rotation=90)
+
+        plt.plot(plot_index, inputFeature_list,label="input",color='c')
+        plt.plot(plot_index, outputFeature_list,label="output",color='k')
+        plt.plot(plot_index, loss ,label="loss",color='r')
+        plt.xticks(self.get_anomaly_time_by_FeatureName(featureName),rotation=270)
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         plt.gca().set_title(featureName)
 
-    def getAttackFeatureInfo(self,attackFeatureInfo_csv_path):
-        df = pd.read_csv(attackFeatureInfo_csv_path)
-        df= df.dropna(axis=0,subset=["End Time"])
-        date_list = [x.split()[0]+" " for x in df["Start Time"].astype(str)]
-        date_list = pd.Series(date_list)
-        df["End Time"] = pd.to_datetime((date_list + df["End Time"] ).str.strip(),format="%d/%m/%Y %H:%M:%S")
-        df["Start Time"] = pd.to_datetime(df["Start Time"].str.strip(),format="%d/%m/%Y %H:%M:%S")
-        df.drop(df.tail(5).index,inplace=True)
-        # print("4 df\n",df[["Start Time","End Time"]])
-        df = self.preProcessAttackFeatureInfo(df)
-        return df
-
-    def preProcessAttackFeatureInfo(self,attack_info):
-        for index,row in attack_info.iterrows():
-            featureNameArray = row["Attack Point"]
-            for featureName  in featureNameArray.split(","):
-                featureName = featureName.strip().replace("-","")
-                self.feature_info_dict.setdefault(featureName,[]).append((row["Start Time"],row["End Time"]))
-
-        # print("feature_info_dict\n",self.feature_info_dict)
-        return attack_info
-            
-
-    def plot_anomalyFeature(self,origin_attack,input_window,output_window,loss,window_size):
-        self.plotData(self.featureNameList, origin_attack, 
-                 input_window,output_window,loss,
-                 window_size,
-                 self.feature_info_dict)
+    def getAnomalyScoreSortByTime(self,loss):
         dataFrameTimeList = []
-        for key,value in self.feature_info_dict.items():
+        for key,value in self.anomaly_time_dict.items():
             for tupleTime in value:
+                # print("tupleTime",tupleTime)
                 dataFrameTimeList.extend(tupleTime)
         # print("dataFrameTimeList",dataFrameTimeList)
-        self.getAnomalyScoreSortByTime(dataFrameTimeList,loss)
 
-
-        
+        with open("result/"+self.modelName+"/loss_cause.txt","w") as f:
+            for anomalyStartTime in dataFrameTimeList:
+                print("-----------anomaly anomalyStartTime",anomalyStartTime,file=f)
+                for curDataFramTime in pd.date_range(anomalyStartTime-timedelta(seconds=1),periods=3,freq="S"):
+                    # curDataFramTime = anomalyStartTime
+                    index = self.seqIndex2WindowIndex(self.dataFrameTime2Index(curDataFramTime))
+                    # print("dateFrameTime:",dataFrameTime,"index:",index)
+                    print("===time:",curDataFramTime,file=f)
+                    # print("loss",loss[index],"origin_data",self.origin_dataset.loc[curDataFramTime])
+                    df = pd.DataFrame(index = self.origin_dataset.columns,data = {"loss":np.array(loss[index]).flatten(),"origin_data":self.origin_dataset.loc[curDataFramTime]})
+                    df = df.sort_values(by=['loss'],ascending=False).T
+                    with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
+                        print(df,file=f)
+                    # print("index of feature which is main cause of anomaly:\n",loss[index].argsort().reverse(),file=f)
+                    # print("loss:",dataFrameTime,"\n index of feature which is main cause of anomaly:\n",loss[index].argsort(),file=f)
+                    # print("time:",dataFrameTime,"loss:",loss[index].argsort())

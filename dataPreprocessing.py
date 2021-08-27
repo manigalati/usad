@@ -30,8 +30,6 @@ class DataProcessing:
     
     def dataPreprocessing(self,dataset):
         
-        for i in list(dataset): 
-            dataset[i]=dataset[i].apply(lambda x: str(x).replace("," , "."))
         # Transform all columns into float64 
         
         dataset = dataset.astype(float)
@@ -42,17 +40,14 @@ class DataProcessing:
 
         # #### Normalization
         min_max_scaler = preprocessing.MinMaxScaler()
-        x = dataset.values
-        x= min_max_scaler.fit_transform(x)
-        dataset = pd.DataFrame(x)
-        # In[ ]:
+        dataset = pd.DataFrame(min_max_scaler.fit_transform(dataset.values))
         return dataset
 
     def seq2Window(self,dataset,window_size):
         # print("np.arange",np.arange(window_size)[None, :])
-        # print("normal.shape[0]",np.arange(normal.shape[0]-window_size)[:, None])
-        # print("3",np.arange(window_size)[None, :] + np.arange(normal.shape[0]-window_size)[:, None])
-        windows_normal=dataset.values[np.arange(window_size)[None, :] + np.arange(dataset.shape[0]-window_size)[:, None]]
+        # print("normal.shape[0]",np.arange(dataset.shape[0]-window_size)[:, None])
+        # print("3",np.arange(window_size)[None, :] + np.arange(dataset.shape[0]-window_size+1)[:, None])
+        windows_normal=dataset.values[np.arange(window_size)[None, :] + np.arange(dataset.shape[0]-window_size+1)[:, None]]
         return windows_normal
 
     def SWAT_loadData(self,normal_data_path,attack_data_path):
@@ -64,6 +59,9 @@ class DataProcessing:
         normal["Timestamp"] = pd.to_datetime(normal["Timestamp"],format="%d/%m/%Y %I:%M:%S %p")
         normal.set_index("Timestamp",inplace=True)
         print("normal data.shape",normal.shape)
+        for i in list(normal): 
+            normal[i]=normal[i].apply(lambda x: str(x).replace("," , "."))
+        normal = normal.astype(float)
         ################################## Attack
         attack = pd.read_csv(attack_data_path)#, nrows=1000)
         # attack = attack.drop(["Timestamp" , "Normal/Attack" ] , axis = 1)
@@ -73,8 +71,11 @@ class DataProcessing:
         attack["Timestamp"] = attack["Timestamp"].str.strip()
         attack["Timestamp"] = pd.to_datetime(attack["Timestamp"],format="%d/%m/%Y %I:%M:%S %p")
         attack.set_index("Timestamp",inplace=True)
+        for i in list(attack): 
+            attack[i]=attack[i].apply(lambda x: str(x).replace("," , "."))
         # attack = attack.drop(["Timestamp"])
         # plotData([],attack)
+        attack = attack.astype(float)
 
         return normal,attack,labels
 
@@ -111,8 +112,6 @@ class DataProcessing:
 
         normal=self.dataPreprocessing(origin_normal)
         attack=self.dataPreprocessing(origin_attack)
-        print("normal",normal[0:2])
-        print("attack",attack[0:2])
 
         windows_normal=self.seq2Window(normal,window_size)
         print("windows_normal.shape",windows_normal.shape)

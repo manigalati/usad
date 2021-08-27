@@ -46,7 +46,7 @@ class normal_model(nn.Module):
     for [batch] in test_loader:
       # print("batch shape",batch.shape)
       count+=1
-      print("iter ",count)
+      print("testing batch iter:",count)
       batch=to_device(batch,device)
 
       with torch.no_grad():
