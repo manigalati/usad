@@ -10,6 +10,86 @@ from torch.optim import optimizer
 from utils import *
 device = get_default_device()
 
+class normal_model(nn.Module):
+  def __init__(self):
+        super().__init__()
+        self.input_output_windows_result = {"input":[],"output":[],"loss":[]}
+
+  def training_step(self, batch, n):
+
+    loss= self.caculateMSE(batch,n)
+    loss = torch.mean(loss)
+    return loss
+
+  def training_all(self,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
+      history = []
+      optimizer1 = opt_func(list(self.parameters()))
+      # print("self paramter",list(self.encoder.parameters())+list(self.decoder.parameters()))
+      for epoch in range(epochs):
+          for [batch] in train_loader:
+              batch=to_device(batch,device)
+              
+                #Train AE1
+              loss1= self.training_step(batch,epoch+1)
+              loss1.backward()
+              optimizer1.step()
+              optimizer1.zero_grad()
+              
+          result = self.evaluate(val_loader, epoch+1)
+          self.epoch_end(epoch, result)
+          history.append(result)
+      return history
+
+  def testing_all(self,test_loader, alpha=0.5,beta=0.5):
+    count=0
+    results=[]
+    for [batch] in test_loader:
+      # print("batch shape",batch.shape)
+      count+=1
+      print("iter ",count)
+      batch=to_device(batch,device)
+
+      with torch.no_grad():
+        # w1,_ = self.encoder(batch)
+        # w1=self.decoder(w1)
+        if count == 1:
+          loss = self.caculateMSE(batch,count,print_output=True)
+        else:
+          loss = self.caculateMSE(batch,count)
+        results.append(loss)
+
+      # del w1
+      torch.cuda.empty_cache()
+      gc.collect()
+    return results
+
+  def validation_step(self, batch, n):
+    loss1=self.training_step(batch,n)
+    return {'val_loss1': loss1}
+        
+  def validation_epoch_end(self,outputs):
+    batch_losses1 = [x['val_loss1'] for x in outputs]
+    epoch_loss1 = torch.stack(batch_losses1).mean()
+    return {'val_loss1': epoch_loss1.item()}
+    
+  def epoch_end(self,epoch, result):
+    print("Epoch [{}], val_loss1: {:.4f}".format(epoch, result['val_loss1']))
+  def evaluate(self, val_loader, n):
+      outputs = [self.validation_step(to_device(batch,device), n) for [batch] in val_loader]
+      return self.validation_epoch_end(outputs)
+  def get_intput_output_window_result(self):
+        # y_anomaly_score=np.concatenate([torch.stack(results[:-1]).flatten().detach().cpu().numpy(),
+        #                             results[-1].flatten().detach().cpu().numpy()])
+        # self.input_output_windows_result = 
+        print("input_output_windows_result[input].len",len(self.input_output_windows_result["input"]))
+        print("input_output_windows_result[input][0].shape",self.input_output_windows_result["input"][0].shape)
+        print("input_output_windows_result[input].shape",np.array(self.input_output_windows_result["input"]).shape)
+        self.input_output_windows_result["input"] = np.array(self.input_output_windows_result["input"])
+        self.input_output_windows_result["output"] = np.array(self.input_output_windows_result["output"])
+        self.input_output_windows_result["loss"] = np.array(self.input_output_windows_result["loss"])
+        return self.input_output_windows_result
+
+
 class Encoder(nn.Module):
   def __init__(self, in_size, latent_size):
     super().__init__()
@@ -677,69 +757,6 @@ class LSTM_VAE(nn.Module):
       return model.validation_epoch_end(outputs)
 
 
-class normal_model(nn.Module):
-  def training_step(self, batch, n):
-
-    loss= self.caculateMSE(batch,n)
-    loss = torch.mean(loss)
-    return loss
-
-  def training_all(self,epochs, train_loader, val_loader, opt_func=torch.optim.Adam):
-      history = []
-      optimizer1 = opt_func(list(self.parameters()))
-      # print("self paramter",list(self.encoder.parameters())+list(self.decoder.parameters()))
-      for epoch in range(epochs):
-          for [batch] in train_loader:
-              batch=to_device(batch,device)
-              
-                #Train AE1
-              loss1= self.training_step(batch,epoch+1)
-              loss1.backward()
-              optimizer1.step()
-              optimizer1.zero_grad()
-              
-          result = self.evaluate(val_loader, epoch+1)
-          self.epoch_end(epoch, result)
-          history.append(result)
-      return history
-
-  def testing_all(self,test_loader, alpha=0.5,beta=0.5):
-    count=0
-    results=[]
-    for [batch] in test_loader:
-      # print("batch shape",batch.shape)
-      count+=1
-      print("iter ",count)
-      batch=to_device(batch,device)
-
-      with torch.no_grad():
-        # w1,_ = self.encoder(batch)
-        # w1=self.decoder(w1)
-        if count == 1:
-          loss = self.caculateMSE(batch,count,print_output=True)
-        else:
-          loss = self.caculateMSE(batch,count)
-        results.append(loss)
-
-      # del w1
-      torch.cuda.empty_cache()
-      gc.collect()
-    return results
-
-  def validation_step(self, batch, n):
-    loss1=self.training_step(batch,n)
-    return {'val_loss1': loss1}
-        
-  def validation_epoch_end(self,outputs):
-    batch_losses1 = [x['val_loss1'] for x in outputs]
-    epoch_loss1 = torch.stack(batch_losses1).mean()
-    return {'val_loss1': epoch_loss1.item()}
-    
-  def epoch_end(self,epoch, result):
-    print("Epoch [{}], val_loss1: {:.4f}".format(epoch, result['val_loss1']))
-  def evaluate(self, val_loader, n):
-      outputs = [self.validation_step(to_device(batch,device), n) for [batch] in val_loader]
-      return self.validation_epoch_end(outputs)
 
 class CNN_LSTM(normal_model):
   ### need to modify this when building new model
@@ -761,6 +778,7 @@ class CNN_LSTM(normal_model):
   ### need to modify this when building new model
   def caculateMSE(self,batch,n,print_output=False):
 
+    # convert batch shape to [epoch,window_size,input_feature_dim]
     batch=batch.reshape(batch.shape[0],-1,self.input_feature_dim)
     # print("batch.shape ",batch.shape)
     latent = batch.permute(0,2,1)
@@ -776,8 +794,13 @@ class CNN_LSTM(normal_model):
     out, hidden = self.lstm(latent, (h0, c0))
 
     loss1 = torch.mean((batch-out)**2,axis=1) 
+    self.input_output_windows_result["input"].extend(batch.detach().cpu().numpy())
+    self.input_output_windows_result["output"].extend(out.detach().cpu().numpy())
+    self.input_output_windows_result["loss"].extend(loss1.detach().cpu().numpy())
     loss1 = torch.mean(loss1,axis=1) 
+    # self.input_output_windows_result["input"].extend(batch.detach().cpu().numpy()),"output":out.detach().cpu().numpy(),"loss":loss1.detach().cpu().numpy()})
     return loss1
+  
 
   ### need to modify this when building new model
   def saveModel(self):

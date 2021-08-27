@@ -17,8 +17,7 @@ from adtk.data import validate_series
 from adtk.visualization import plot
 from adtk.detector import SeasonalAD
 from adtk.transformer import PcaProjection
-from utils import printDataInfo
-from utils import plotData
+from utils import *
 
 class DataProcessing:
     def useADTKLibraryPreprocessing(self,dataset):
@@ -44,8 +43,8 @@ class DataProcessing:
         # #### Normalization
         min_max_scaler = preprocessing.MinMaxScaler()
         x = dataset.values
-        x_scaled = min_max_scaler.fit_transform(x)
-        dataset = pd.DataFrame(x_scaled)
+        x= min_max_scaler.fit_transform(x)
+        dataset = pd.DataFrame(x)
         # In[ ]:
         return dataset
 
@@ -75,7 +74,7 @@ class DataProcessing:
         attack["Timestamp"] = pd.to_datetime(attack["Timestamp"],format="%d/%m/%Y %I:%M:%S %p")
         attack.set_index("Timestamp",inplace=True)
         # attack = attack.drop(["Timestamp"])
-        plotData([],attack)
+        # plotData([],attack)
 
         return normal,attack,labels
 
@@ -103,13 +102,15 @@ class DataProcessing:
 
         
         return normal,attack,labels
+    
         
     def handleData(self,normal_data_path,attack_data_path,window_size,hidden_size,BATCH_SIZE):
         # normal,attack,labels = WADI_loadData(normal_data_path,attack_data_path)
-        normal,attack,labels = self.SWAT_loadData(normal_data_path,attack_data_path)
+        origin_normal,origin_attack,labels = self.SWAT_loadData(normal_data_path,attack_data_path)
+        
 
-        normal=self.dataPreprocessing(normal)
-        attack=self.dataPreprocessing(attack)
+        normal=self.dataPreprocessing(origin_normal)
+        attack=self.dataPreprocessing(origin_attack)
         print("normal",normal[0:2])
         print("attack",attack[0:2])
 
@@ -143,4 +144,5 @@ class DataProcessing:
             torch.from_numpy(windows_attack).float().view(([windows_attack.shape[0],w_size]))
         ) , batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-        return train_loader,val_loader,test_loader,windows_normal,labels,attack
+        return train_loader,val_loader,test_loader,windows_normal,labels,origin_attack,attack
+
