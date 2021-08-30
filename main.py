@@ -14,17 +14,24 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-batch_size = 7919
-#BATCH_SIZE = 100
 n_epochs = 10
 hidden_size = 40
 window_size = 12
 # normal_data_path="input/SWaT_Dataset_Normal_v1.csv"
 # attack_data_path="input/SWaT_Dataset_Attack_v0.csv"
 normal_data_path = "/workspace/lab/anomaly_detecton/dataset/SWAT/SWaT_Dataset_Normal_v1.csv"
-attack_data_path = "/workspace/lab/anomaly_detecton/dataset/SWAT/SWaT_Dataset_Attack_v0.csv"
 attackFeatureInfo_csv_path= "/workspace/lab/anomaly_detecton/dataset/SWAT/List_of_attacks_Final.csv"
-# attack_data_path="/workspace/lab/anomaly_detecton/dataset/SWAT/SWaT_Dataset_Attack_v0_test.csv"
+
+TEST_testing=False
+if TEST_testing == True:
+    batch_size= 50
+    attack_data_path="/workspace/lab/anomaly_detecton/dataset/SWAT/SWaT_Dataset_Attack_v0_test.csv"
+else:
+    batch_size=7919
+    attack_data_path = "/workspace/lab/anomaly_detecton/dataset/SWAT/SWaT_Dataset_Attack_v0.csv"
+
+
+# batch_size = 7919
 # normal_data_path="/workspace/lab/anomaly_detecton/dataset/WADI.A1_9_Oct_2017/WADI_normal_pre_2.csv"
 # attack_data_path="/workspace/lab/anomaly_detecton/dataset/WADI.A1_9_Oct_2017/WADI_Attack_pre.csv"
 #  "/workspace/lab/anomaly_detecton/dataset/WADI.A1_9_Oct_2017"
@@ -45,18 +52,13 @@ class execution:
         self.dataPreprocessingObj = DataProcessing()
         self.device = get_default_device()
 
-    def preProcess(self, modelName):
+    def getModel(self, modelName,input_feature_size):
 
-        # train_loader 每次iter 取出來的東西是一個windows 攤平成一維的數據
-        self.train_loader, self.val_loader, self.test_loader, self.windows_dataset, self.labels, self.origin_attack,self.attack = self.dataPreprocessingObj.handleData(
-            normal_data_path, attack_data_path, window_size, hidden_size, batch_size)
 
-        input_feature_size = self.windows_dataset.shape[2]
-        windows_size = self.windows_dataset.shape[1]
         # w_size = 一整個window 的input 變成一維
-        w_size = self.windows_dataset.shape[1]*self.windows_dataset.shape[2]
+        w_size = input_feature_size * window_size
         # w_size = 一整個window 的latent 變成一維
-        z_size = self.windows_dataset.shape[1]*hidden_size
+        z_size = window_size*hidden_size
 
         if modelName == "USAD":
             model = UsadModel(w_size, z_size)
@@ -64,12 +66,12 @@ class execution:
             model = AutoencoderModel(w_size, z_size, input_feature_size)
         elif modelName == "LSTM_USAD":
             model = LSTM_UsadModel(
-                w_size, z_size, input_feature_size, windows_size)
+                w_size, z_size, input_feature_size, window_size)
         elif modelName == "LSTM_VAE":
             model = LSTM_VAE(input_feature_size-5, hidden_size,
-                             input_feature_size, windows_size)
+                             input_feature_size, window_size)
         elif modelName == "CNN_LSTM":
-            model = CNN_LSTM(hidden_size, input_feature_size, windows_size)
+            model = CNN_LSTM(hidden_size, input_feature_size, window_size)
         else:
             print("model name not found")
             exit()
@@ -77,21 +79,27 @@ class execution:
         self.model = to_device(model, self.device)
 
     def train(self, modelName):
-        self.preProcess(modelName)
+        # train_loader 每次iter 取出來的東西是一個windows 攤平成一維的數據
+        train_loader, val_loader, input_feature_size = self.dataPreprocessingObj.HandleNormalData(
+            normal_data_path, window_size, hidden_size, batch_size)
+        self.getModel(modelName,input_feature_size)
         history = self.model.training_all(
-            n_epochs, self.train_loader, self.val_loader)
+            n_epochs, train_loader, val_loader)
         print("model", self.model)
         plot_history(history, modelName)
 
         self.model.saveModel()
 
     def test(self, modelName):
-        self.preProcess(modelName)
+        test_loader,self.labels,self.origin_attack,self.attack,input_feature_size = self.dataPreprocessingObj.HandleAnomalyData(
+            attack_data_path, window_size, hidden_size, batch_size)
+        self.getModel(modelName,input_feature_size)
+
         plotFeatureObj=plotFeature(attackFeatureInfo_csv_path,self.origin_attack,modelName,window_size)
         # Testing
         # 這個result 是越高越可能是anomaly
         self.model.loadModel()
-        results = self.model.testing_all(self.test_loader)
+        results = self.model.testing_all(test_loader)
 
         print("torch.stack(results[:-1])",
               torch.stack(results[:-1]).cpu().size())
@@ -118,11 +126,11 @@ class execution:
         print("self.attack",self.attack[window_size-1:])
         print("self.original_attack",self.origin_attack[window_size-1:])
         print("input_output_window_result[output]",input_output_window_result["output"][:,-1,0])
-        plotFeatureObj.plot_anomalyFeature(
-                 input_output_window_result["input"][:,-1,:],
-                 input_output_window_result["output"][:,-1,:],
-                 input_output_window_result["loss"],
-                 )
+        # plotFeatureObj.plot_anomalyFeature(
+        #          input_output_window_result["input"][:,-1,:],
+        #          input_output_window_result["output"][:,-1,:],
+        #          input_output_window_result["loss"],
+        #          )
 
         printResult(y_True, y_anomaly_score, threshold, modelName)
         print("threshold", threshold)

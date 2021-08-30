@@ -18,6 +18,9 @@ from adtk.visualization import plot
 from adtk.detector import SeasonalAD
 from adtk.transformer import PcaProjection
 from utils import *
+from adtk.detector import RegressionAD
+from sklearn.linear_model import LinearRegression
+from adtk.detector import PcaAD
 
 class DataProcessing:
     def useADTKLibraryPreprocessing(self,dataset):
@@ -25,6 +28,7 @@ class DataProcessing:
         dataset = validate_series(dataset)
         dataset = PcaProjection(k=30).fit_transform(dataset)
         print("after useLibraryPreprocessing data.shape",dataset.shape)
+
         
         return dataset
     
@@ -35,12 +39,13 @@ class DataProcessing:
         dataset = dataset.astype(float)
         # print("dataset dtype",dataset.dtypes)
 
-        # dataset = self.useADTKLibraryPreprocessing(dataset)
+        dataset = self.useADTKLibraryPreprocessing(dataset)
         # 不知道為啥read 進來的float .會變成,
-
         # #### Normalization
         min_max_scaler = preprocessing.MinMaxScaler()
+        print("dataset.head(2)",dataset.head(2))
         dataset = pd.DataFrame(min_max_scaler.fit_transform(dataset.values))
+        print("dataset.head(2)",dataset.head(2))
         return dataset
 
     def seq2Window(self,dataset,window_size):
@@ -50,9 +55,9 @@ class DataProcessing:
         windows_normal=dataset.values[np.arange(window_size)[None, :] + np.arange(dataset.shape[0]-window_size+1)[:, None]]
         return windows_normal
 
-    def SWAT_loadData(self,normal_data_path,attack_data_path):
+    def SWAT_loadNormalData(self,data_path):
         ############################### Normal 
-        normal = pd.read_csv(normal_data_path)#, nrows=1000)
+        normal = pd.read_csv(data_path)#, nrows=1000)
         # normal = normal.drop(["Timestamp" , "Normal/Attack" ] , axis = 1)
         normal = normal.drop(["Normal/Attack" ] , axis = 1)
         normal["Timestamp"] = normal["Timestamp"].str.strip()
@@ -62,8 +67,11 @@ class DataProcessing:
         for i in list(normal): 
             normal[i]=normal[i].apply(lambda x: str(x).replace("," , "."))
         normal = normal.astype(float)
-        ################################## Attack
-        attack = pd.read_csv(attack_data_path)#, nrows=1000)
+
+        return normal
+
+    def SWAT_loadAnomalyData(self,data_path):
+        attack = pd.read_csv(data_path)#, nrows=1000)
         # attack = attack.drop(["Timestamp" , "Normal/Attack" ] , axis = 1)
         printDataInfo(attack)
         labels = [ float(label!= 'Normal' ) for label  in attack["Normal/Attack"].values]
@@ -77,7 +85,10 @@ class DataProcessing:
         # plotData([],attack)
         attack = attack.astype(float)
 
-        return normal,attack,labels
+        return attack,labels
+    
+    
+    
 
     def WADI_loadData(self,normal_data_path,attack_data_path):
         #### Normal 
@@ -104,22 +115,18 @@ class DataProcessing:
         
         return normal,attack,labels
     
-        
-    def handleData(self,normal_data_path,attack_data_path,window_size,hidden_size,BATCH_SIZE):
+    def HandleNormalData(self,normal_data_path,window_size,hidden_size,BATCH_SIZE):
         # normal,attack,labels = WADI_loadData(normal_data_path,attack_data_path)
-        origin_normal,origin_attack,labels = self.SWAT_loadData(normal_data_path,attack_data_path)
-        
-
+        origin_normal= self.SWAT_loadNormalData(normal_data_path)
         normal=self.dataPreprocessing(origin_normal)
-        attack=self.dataPreprocessing(origin_attack)
+        # pca_ad = PcaAD(k=20)
+        # anomalies = pca_ad.fit_detect(normal)
+        # exit()
 
         windows_normal=self.seq2Window(normal,window_size)
         print("windows_normal.shape",windows_normal.shape)
 
-        windows_attack=self.seq2Window(attack,window_size)
-        print("window_attack.shape",windows_attack.shape)
-
-
+        input_feature_size = windows_normal.shape[2]
         w_size=windows_normal.shape[1]*windows_normal.shape[2]
         z_size=windows_normal.shape[1]*hidden_size
 
@@ -139,9 +146,32 @@ class DataProcessing:
             torch.from_numpy(windows_normal_val).float().view(([windows_normal_val.shape[0],w_size]))
         ) , batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
+        return train_loader,val_loader,input_feature_size
+
+
+        
+    def HandleAnomalyData(self,attack_data_path,window_size,hidden_size,BATCH_SIZE):
+        # normal,attack,labels = WADI_loadData(normal_data_path,attack_data_path)
+        origin_attack,labels = self.SWAT_loadAnomalyData(attack_data_path)
+        
+        attack=self.dataPreprocessing(origin_attack)
+
+
+        windows_attack=self.seq2Window(attack,window_size)
+        print("window_attack.shape",windows_attack.shape)
+
+        input_feature_size = windows_attack.shape[2]
+        w_size=windows_attack.shape[1]*windows_attack.shape[2]
+        z_size=windows_attack.shape[1]*hidden_size
+
+        print("w_size",w_size)
+        print("z_size",z_size)
+
+        ## build loader
+
         test_loader = torch.utils.data.DataLoader(data_utils.TensorDataset(
             torch.from_numpy(windows_attack).float().view(([windows_attack.shape[0],w_size]))
         ) , batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-        return train_loader,val_loader,test_loader,windows_normal,labels,origin_attack,attack
+        return test_loader,labels,origin_attack,attack,input_feature_size
 

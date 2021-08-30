@@ -128,6 +128,8 @@ def evaluateResult(y_True, y_pred, threshold, modelName):
 
     recall = float(TP/(TP+FN))
     precision = float(TP/(TP+FP))
+    if recall == 0 and precision ==0:
+        return
     with open("result/"+modelName+"/result.txt", 'a') as resultFile:
         print("-------------------", file=resultFile)
         print("TP:", TP, "TN:", TN, "FP:", FP, "FN:", FN, file=resultFile)
@@ -220,8 +222,12 @@ class plotFeature:
         self.anomaly_featureNameList =  self.get_anomaly_FeatureNameList(self.anomaly_time_dict)
         ### plot origin 的namelist 改這個
         # self.plotOriginalData(["AIT202"])
-        self.plotOriginalData(self.anomaly_featureNameList)
+        self.plotOriginalData(self.getPlotOriginalFeatureNameList())
         # print("self.anomaly_time_dict",self.anomaly_time_dict)
+    def getPlotOriginalFeatureNameList(self):
+        result=self.anomaly_featureNameList
+        result.append("P101")
+        return result
 
     def getAttackFeatureInfo(self,attackFeatureInfo_csv_path):
         df = pd.read_csv(attackFeatureInfo_csv_path)
@@ -272,7 +278,7 @@ class plotFeature:
 
 
     def plotOriginalData(self,featureNameList):
-        plt.figure(figsize=(100, 50))
+        plt.figure(figsize=(100, 10))
         # fig,ax  = plt.subplots(3,1)
         plt.title("original_features")
 
@@ -296,7 +302,7 @@ class plotFeature:
 
     def plot_input_output_anomalyScore(self,featureNameList, input_Features_list, output_Features_list, loss_):
 
-        plt.figure(figsize=(100, 50))
+        plt.figure(figsize=(100, 10))
 
         print("featureNameList",featureNameList)
 
