@@ -56,12 +56,13 @@ class UsadModel(nn.Module):
     return loss1,loss2
 
   def validation_step(self, batch, n):
-    z = self.encoder(batch)
-    w1 = self.decoder1(z)
-    w2 = self.decoder2(z)
-    w3 = self.decoder2(self.encoder(w1))
-    loss1 = 1/n*torch.mean((batch-w1)**2)+(1-1/n)*torch.mean((batch-w3)**2)
-    loss2 = 1/n*torch.mean((batch-w2)**2)-(1-1/n)*torch.mean((batch-w3)**2)
+    with torch.no_grad():
+        z = self.encoder(batch)
+        w1 = self.decoder1(z)
+        w2 = self.decoder2(z)
+        w3 = self.decoder2(self.encoder(w1))
+        loss1 = 1/n*torch.mean((batch-w1)**2)+(1-1/n)*torch.mean((batch-w3)**2)
+        loss2 = 1/n*torch.mean((batch-w2)**2)-(1-1/n)*torch.mean((batch-w3)**2)
     return {'val_loss1': loss1, 'val_loss2': loss2}
         
   def validation_epoch_end(self, outputs):
@@ -107,9 +108,10 @@ def training(epochs, model, train_loader, val_loader, opt_func=torch.optim.Adam)
     
 def testing(model, test_loader, alpha=.5, beta=.5):
     results=[]
-    for [batch] in test_loader:
-        batch=to_device(batch,device)
-        w1=model.decoder1(model.encoder(batch))
-        w2=model.decoder2(model.encoder(w1))
-        results.append(alpha*torch.mean((batch-w1)**2,axis=1)+beta*torch.mean((batch-w2)**2,axis=1))
+    with torch.no_grad():
+        for [batch] in test_loader:
+            batch=to_device(batch,device)
+            w1=model.decoder1(model.encoder(batch))
+            w2=model.decoder2(model.encoder(w1))
+            results.append(alpha*torch.mean((batch-w1)**2,axis=1)+beta*torch.mean((batch-w2)**2,axis=1))
     return results
